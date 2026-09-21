@@ -75,7 +75,7 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
             let candidate = ProcessInfo.processInfo.environment["ANKO_PREVIEW_PAGE"] ?? "home"
             let page = ["home", "mine", "fog", "share", "pet"].contains(candidate) ? candidate : "home"
             configuration.userContentController.addUserScript(WKUserScript(
-                source: "window.ankoReview?.go('\(page)');",
+                source: "window.ankoReview?.go('\(page)');window.ankoModelReview='\(ProcessInfo.processInfo.environment["ANKO_MODEL_REVIEW"] == "turn" ? "turn" : "")';",
                 injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
         #endif

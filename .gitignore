@@ -62,3 +62,6 @@ Thumbs.db
 prototypes/anko-ios/Anko-iOS.zip
 prototypes/anko-ios/Archive/
 prototypes/anko-ios/Design/*.mp4
+
+# Blender automatic authoring backups
+*.blend1
