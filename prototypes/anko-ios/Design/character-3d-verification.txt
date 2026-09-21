@@ -1,0 +1,8 @@
+PASS Xcode simulator build, iPhone 17 Pro / iOS 27.
+PASS identical desktop HTML and installed app resource bytes.
+PASS simulator visual review: real 3D model in light companion page and dark home page; map avatar also rendered.
+PASS manual simulator drag: avatar follows rightwards, turns head/body, changes leg pose. This interaction was checked before subsequent material and renderer copy optimizations.
+PASS motion unit tests: continuous reversal, stopping, bounded repeated impulses, expression blend, reduced motion, finite values over extended simulation.
+PASS existing native/web control, theme and reaction regression suites (jsdom has no WebGL; actual rendering verified in simulator).
+PASS generated script syntax and single 3D runtime; no happiness metric.
+The mesh is a procedural reconstruction of the reference, not an official production character asset. No rigged asset was supplied. No real device, messaging, or AI connection added.

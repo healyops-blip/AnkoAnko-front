@@ -1,0 +1,28 @@
+name: Anko
+options:
+  bundleIdPrefix: com.anko
+  deploymentTarget:
+    iOS: '17.0'
+targets:
+  Anko:
+    type: application
+    platform: iOS
+    sources:
+      - path: Anko
+        excludes: [Resources]
+      - path: Anko/Resources/Web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.anko.smarthome
+        PRODUCT_NAME: Anko
+        SWIFT_VERSION: '5.0'
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Anko
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: '1'
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: HVYW49UUVA

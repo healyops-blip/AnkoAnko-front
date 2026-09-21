@@ -1,0 +1,10 @@
+Tool: built-in image_gen (reference-image generation).
+Reference image: user-provided /Users/a1234/Desktop/1.png.
+Final prompt: Reference image: the supplied Anker smart home website. Generate ONE isolated full-body 3D mascot asset matching precisely the blue companion character visible in the reference: round oversized blue head with two small triangular cat-like ear points, pale icy-blue heart-shaped face, glossy dark eyes with white catchlights, tiny dark nose, happy friendly open smile, compact azure blue body with a white lightning bolt on chest, short blue legs, right hand raised gently waving. Premium softly lit polished vinyl character, same proportions and identity as reference, front three-quarter view. Entire character centered and fills 85 percent of square canvas. Genuinely transparent background, no floor, no text, no frame, no other objects. This is a production asset for a white minimalist iOS smart home app.
+
+
+App icon — built-in image_gen, reference: existing Anko mascot.
+Final prompt: Make this exact Anko blue mascot into a single square iOS app icon. 1024x1024 opaque pale blue background, no transparency, no rounded corners, no text. Close-up centered head and upper body, same face, blue ears, friendly smile and chest lightning bolt. Large readable at small icon size. Premium 3D.
+Exported to 1024x1024 for the iOS asset catalog.
+
+Reactive expressions (built-in imagegen): preserve supplied Anko blue 3D identity, white chest lightning, square centered full body, transparent background. Happy: closed crescent eyes, big smile, both arms raised. Sleepy: peaceful closed eyes, small smile, relaxed arms. Alert: attentive open eyes, round mouth, gently raised hand. No text, props, or background. Assets saved in Anko/Resources/Web/assets/anko-{happy,sleepy,alert}.png.

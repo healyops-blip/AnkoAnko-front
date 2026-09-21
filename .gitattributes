@@ -1,0 +1,2 @@
+# The standalone HTML embeds third-party GLSL shader strings verbatim.
+prototypes/anko-ios/Anko/Resources/Web/index.html whitespace=-blank-at-eol,-space-before-tab

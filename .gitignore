@@ -56,3 +56,9 @@ Thumbs.db
 **/linux/flutter/ephemeral/
 **/windows/flutter/ephemeral/
 **/macos/Flutter/ephemeral/
+
+# Standalone Anko prototype dependencies and export bundles
+**/node_modules/
+prototypes/anko-ios/Anko-iOS.zip
+prototypes/anko-ios/Archive/
+prototypes/anko-ios/Design/*.mp4
