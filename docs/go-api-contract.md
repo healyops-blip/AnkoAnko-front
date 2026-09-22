@@ -120,3 +120,70 @@ These labels are test data, not values in a role/identity column.
 
 The service must derive the owner of this setting from the bearer token, reject
 self-selection, and ensure both members belong to the same family.
+
+## 2D guardian map
+
+`GET /v1/households/{householdId}/guardian-map`
+
+This endpoint returns normalized 2D map data. Coordinates and coverage radii
+use the `0.0` to `1.0` range and must not contain device-screen pixels. The
+Flutter client uses the same payload for every screen size.
+
+```json
+{
+  "mapId":"map-home",
+  "mapVersion":1,
+  "completionPercent":75,
+  "rooms":[
+    {
+      "id":"room-living",
+      "name":"客厅",
+      "polygon":[
+        {"x":0.0,"y":0.0},
+        {"x":0.58,"y":0.0},
+        {"x":0.58,"y":0.61},
+        {"x":0.0,"y":0.61}
+      ],
+      "labelPosition":{"x":0.05,"y":0.05},
+      "scanStatus":"completed",
+      "monitoringStatus":"active",
+      "privacyEnabled":false
+    }
+  ],
+  "devices":[
+    {
+      "id":"device-camera-1",
+      "productModel":"T8171",
+      "roomId":"room-living",
+      "zoneId":null,
+      "position":{"x":0.34,"y":0.34},
+      "coverageRadius":0.3,
+      "online":true
+    }
+  ],
+  "events":[
+    {
+      "id":"event-1",
+      "eventType":"fallDetected",
+      "severity":"info",
+      "roomId":"room-living",
+      "zoneId":null,
+      "position":{"x":0.23,"y":0.18},
+      "title":"跌倒记录",
+      "subtitle":"昨日 · 已确认无碍",
+      "status":"resolved"
+    }
+  ],
+  "ankoPosition":{"x":0.53,"y":0.55}
+}
+```
+
+Allowed room values:
+
+- `scanStatus`: `template`, `scanning`, `completed`
+- `monitoringStatus`: `active`, `unmonitored`
+- `severity`: `info`, `warning`, `critical`
+
+The 2D response intentionally contains no GLB, glTF or USDZ URL. A future 3D
+viewer and a real-time device-event stream will use separate contracts so the
+guardian card remains lightweight.

@@ -3,23 +3,29 @@ import 'package:flutter/foundation.dart';
 import '../domain/auth_models.dart';
 import 'api_auth_repository.dart';
 import 'api_family_repository.dart';
+import 'api_guardian_map_repository.dart';
 import 'auth_repository.dart';
 import 'configuration_auth_repository.dart';
 import 'family_repository.dart';
+import 'guardian_map_repository.dart';
 import 'smoke_auth_repository.dart';
 import 'smoke_data_store.dart';
 import 'smoke_family_repository.dart';
+import 'smoke_guardian_map_repository.dart';
 
 class RuntimeServices {
   const RuntimeServices({
     required this.smokeMode,
     required this.authRepository,
     required this.familyRepositoryFactory,
+    required this.guardianMapRepositoryFactory,
   });
 
   final bool smokeMode;
   final AuthRepository authRepository;
   final FamilyRepository Function(AuthSession session) familyRepositoryFactory;
+  final GuardianMapRepository Function(AuthSession session)
+  guardianMapRepositoryFactory;
 }
 
 RuntimeServices createRuntimeServices({
@@ -41,6 +47,7 @@ RuntimeServices createRuntimeServices({
       authRepository: SmokeAuthRepository(store: store),
       familyRepositoryFactory: (session) =>
           SmokeFamilyRepository(store: store, session: session),
+      guardianMapRepositoryFactory: (_) => const SmokeGuardianMapRepository(),
     );
   }
   if (apiBaseUrl.isEmpty) {
@@ -49,6 +56,8 @@ RuntimeServices createRuntimeServices({
       smokeMode: false,
       authRepository: const ConfigurationAuthRepository(message),
       familyRepositoryFactory: (_) =>
+          throw const AppConfigurationException(message),
+      guardianMapRepositoryFactory: (_) =>
           throw const AppConfigurationException(message),
     );
   }
@@ -62,6 +71,11 @@ RuntimeServices createRuntimeServices({
       initialAnkoAccount: const String.fromEnvironment('ANKO_ACCOUNT'),
     ),
     familyRepositoryFactory: (session) => ApiFamilyRepository(
+      baseUrl: apiBaseUrl,
+      accessToken: session.accessToken,
+      householdId: session.householdId,
+    ),
+    guardianMapRepositoryFactory: (session) => ApiGuardianMapRepository(
       baseUrl: apiBaseUrl,
       accessToken: session.accessToken,
       householdId: session.householdId,

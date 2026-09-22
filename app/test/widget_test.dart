@@ -1,9 +1,11 @@
 import 'package:anko_anko/anko_app.dart';
 import 'package:anko_anko/data/configuration_auth_repository.dart';
+import 'package:anko_anko/data/api_guardian_map_repository.dart';
 import 'package:anko_anko/data/runtime_services.dart';
 import 'package:anko_anko/data/smoke_auth_repository.dart';
 import 'package:anko_anko/data/smoke_data_store.dart';
 import 'package:anko_anko/data/smoke_family_repository.dart';
+import 'package:anko_anko/data/smoke_guardian_map_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,6 +17,8 @@ void main() {
     expect(find.text('Anko守护界面'), findsOneWidget);
     expect(find.byKey(const Key('smoke-mode-banner')), findsOneWidget);
     expect(find.byKey(const Key('guardian-screen')), findsOneWidget);
+    expect(find.text('空间完整度 75% · 4 个房间'), findsOneWidget);
+    expect(find.text('4 个房间 · 与家保持连接'), findsNothing);
     expect(find.text('2台在线 · 1处无监测'), findsOneWidget);
   });
 
@@ -186,7 +190,26 @@ void main() {
     );
 
     expect(smoke.authRepository, isA<SmokeAuthRepository>());
+    expect(
+      smoke.guardianMapRepositoryFactory(
+        SmokeDataStore().findByAnkoAccount('dev_mom')!.toSession(),
+      ),
+      isA<SmokeGuardianMapRepository>(),
+    );
     expect(missingApi.authRepository, isA<ConfigurationAuthRepository>());
+  });
+
+  test('formal mode wires the 2D guardian map API repository', () {
+    final services = createRuntimeServices(
+      smokeModeOverride: false,
+      apiBaseUrlOverride: 'https://api.example.test',
+    );
+    final session = SmokeDataStore().findByAnkoAccount('dev_mom')!.toSession();
+
+    expect(
+      services.guardianMapRepositoryFactory(session),
+      isA<ApiGuardianMapRepository>(),
+    );
   });
 
   testWidgets('formal mode never silently falls back to smoke', (tester) async {

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../data/guardian_map_repository.dart';
+import '../domain/guardian_map_models.dart';
 import '../widgets/anko_image.dart';
 import 'anko_conversation_screen.dart';
 
 class GuardianScreen extends StatefulWidget {
-  const GuardianScreen({super.key});
+  const GuardianScreen({required this.repository, super.key});
+
+  final GuardianMapRepository repository;
 
   @override
   State<GuardianScreen> createState() => _GuardianScreenState();
@@ -13,6 +17,13 @@ class GuardianScreen extends StatefulWidget {
 class _GuardianScreenState extends State<GuardianScreen> {
   bool _showCoverage = false;
   bool _messageAcknowledged = false;
+  late Future<GuardianMapSnapshot> _mapFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapFuture = widget.repository.fetchMap();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,23 +39,9 @@ class _GuardianScreenState extends State<GuardianScreen> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
             sliver: SliverList.list(
               children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => _showInfo('空间完整度用于提示尚未补全的房间资料。'),
-                    child: const Text('空间完整度 75% · 4 个房间'),
-                  ),
-                ),
-                const SizedBox(height: 8),
                 _buildMessageCard(),
                 const SizedBox(height: 14),
-                GuardianMapCard(
-                  showCoverage: _showCoverage,
-                  onCoverageChanged: () =>
-                      setState(() => _showCoverage = !_showCoverage),
-                  onEventTap: _showInfo,
-                  onAnkoLongPress: _openConversation,
-                ),
+                _buildGuardianMap(),
                 const SizedBox(height: 18),
                 const Center(
                   child: Text(
@@ -135,6 +132,37 @@ class _GuardianScreenState extends State<GuardianScreen> {
     );
   }
 
+  Widget _buildGuardianMap() {
+    return FutureBuilder<GuardianMapSnapshot>(
+      future: _mapFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _MapLoadError(
+            message: snapshot.error.toString(),
+            onRetry: () =>
+                setState(() => _mapFuture = widget.repository.fetchMap()),
+          );
+        }
+        if (snapshot.data case final map?) {
+          return GuardianMapCard(
+            map: map,
+            showCoverage: _showCoverage,
+            onCoverageChanged: () =>
+                setState(() => _showCoverage = !_showCoverage),
+            onEventTap: _showInfo,
+            onAnkoLongPress: _openConversation,
+          );
+        }
+        return const Card(
+          child: SizedBox(
+            height: 360,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        );
+      },
+    );
+  }
+
   void _showInfo(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
@@ -184,6 +212,7 @@ class HeaderButton extends StatelessWidget {
 
 class GuardianMapCard extends StatelessWidget {
   const GuardianMapCard({
+    required this.map,
     required this.showCoverage,
     required this.onCoverageChanged,
     required this.onEventTap,
@@ -191,6 +220,7 @@ class GuardianMapCard extends StatelessWidget {
     super.key,
   });
 
+  final GuardianMapSnapshot map;
   final bool showCoverage;
   final VoidCallback onCoverageChanged;
   final ValueChanged<String> onEventTap;
@@ -210,63 +240,18 @@ class GuardianMapCard extends StatelessWidget {
               'Anko守护',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
-            const Text(
-              '4 个房间 · 与家保持连接',
-              style: TextStyle(color: Color(0xFF8B99AA)),
+            Text(
+              '空间完整度 ${map.completionPercent}% · ${map.rooms.length} 个房间',
+              style: const TextStyle(color: Color(0xFF8B99AA)),
             ),
             const SizedBox(height: 14),
             AspectRatio(
               aspectRatio: 0.86,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(painter: HomeMapPainter(showCoverage)),
-                    ),
-                    Positioned(
-                      left: 16,
-                      top: 24,
-                      child: MapEvent(
-                        icon: Icons.check_circle_outline_rounded,
-                        title: '跌倒记录',
-                        subtitle: '昨日 · 已确认无碍',
-                        onTap: () => onEventTap('跌倒记录：家人已确认现场无碍。'),
-                      ),
-                    ),
-                    Positioned(
-                      right: 12,
-                      top: 102,
-                      child: MapEvent(
-                        icon: Icons.pest_control_rodent_outlined,
-                        title: '疑似小动物',
-                        subtitle: '厨房 · 3 条合并',
-                        warm: true,
-                        onTap: () => onEventTap('厨房活动需要家人核实。'),
-                      ),
-                    ),
-                    Positioned(
-                      left: 118,
-                      top: 188,
-                      child: GestureDetector(
-                        key: const Key('map-anko'),
-                        behavior: HitTestBehavior.opaque,
-                        onLongPress: onAnkoLongPress,
-                        child: const AnkoImage(size: 78),
-                      ),
-                    ),
-                    Positioned(
-                      left: 10,
-                      bottom: 18,
-                      child: MapEvent(
-                        icon: Icons.inventory_2_outlined,
-                        title: '门口有外卖',
-                        subtitle: '18:12 · 待领取',
-                        onTap: () => onEventTap('门口外卖仍待领取。'),
-                      ),
-                    ),
-                  ],
-                ),
+              child: _GuardianMapCanvas(
+                map: map,
+                showCoverage: showCoverage,
+                onEventTap: onEventTap,
+                onAnkoLongPress: onAnkoLongPress,
               ),
             ),
             const SizedBox(height: 12),
@@ -274,10 +259,11 @@ class GuardianMapCard extends StatelessWidget {
               children: [
                 const Icon(Icons.shield_outlined, color: Color(0xFF8292A4)),
                 const SizedBox(width: 6),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '2台在线 · 1处无监测',
-                    style: TextStyle(color: Color(0xFF8292A4)),
+                    '${map.onlineDeviceCount}台在线 · '
+                    '${map.unmonitoredRoomCount}处无监测',
+                    style: const TextStyle(color: Color(0xFF8292A4)),
                   ),
                 ),
                 TextButton.icon(
@@ -294,24 +280,123 @@ class GuardianMapCard extends StatelessWidget {
   }
 }
 
-class MapEvent extends StatelessWidget {
-  const MapEvent({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.warm = false,
-    super.key,
-  });
+class _MapLoadError extends StatelessWidget {
+  const _MapLoadError({required this.message, required this.onRetry});
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final bool warm;
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.map_outlined, size: 42),
+            const SizedBox(height: 10),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 10),
+            OutlinedButton(onPressed: onRetry, child: const Text('重新加载地图')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GuardianMapCanvas extends StatelessWidget {
+  const _GuardianMapCanvas({
+    required this.map,
+    required this.showCoverage,
+    required this.onEventTap,
+    required this.onAnkoLongPress,
+  });
+
+  final GuardianMapSnapshot map;
+  final bool showCoverage;
+  final ValueChanged<String> onEventTap;
+  final VoidCallback onAnkoLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = Size(constraints.maxWidth, constraints.maxHeight);
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(painter: HomeMapPainter(map, showCoverage)),
+              ),
+              for (final event in map.events) _positionEvent(event, size),
+              _positionAnko(size),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _positionEvent(GuardianMapEvent event, Size size) {
+    const markerWidth = 148.0;
+    const markerHeight = 50.0;
+    final left = (event.position.x * size.width - markerWidth / 2).clamp(
+      4.0,
+      size.width - markerWidth - 4,
+    );
+    final top = (event.position.y * size.height - markerHeight / 2).clamp(
+      4.0,
+      size.height - markerHeight - 4,
+    );
+    return Positioned(
+      left: left,
+      top: top,
+      width: markerWidth,
+      child: GuardianEventMarker(
+        event: event,
+        onTap: () => onEventTap('${event.title}：${event.subtitle}'),
+      ),
+    );
+  }
+
+  Widget _positionAnko(Size size) {
+    const ankoSize = 78.0;
+    final left = (map.ankoPosition.x * size.width - ankoSize / 2).clamp(
+      0.0,
+      size.width - ankoSize,
+    );
+    final top = (map.ankoPosition.y * size.height - ankoSize / 2).clamp(
+      0.0,
+      size.height - ankoSize,
+    );
+    return Positioned(
+      left: left,
+      top: top,
+      child: GestureDetector(
+        key: const Key('map-anko'),
+        behavior: HitTestBehavior.opaque,
+        onLongPress: onAnkoLongPress,
+        child: const AnkoImage(size: ankoSize),
+      ),
+    );
+  }
+}
+
+class GuardianEventMarker extends StatelessWidget {
+  const GuardianEventMarker({
+    required this.event,
+    required this.onTap,
+    super.key,
+  });
+
+  final GuardianMapEvent event;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final warm = event.severity != GuardianEventSeverity.info;
     return Material(
       color: warm
           ? const Color(0xFFFFF8EA)
@@ -326,29 +411,35 @@ class MapEvent extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                icon,
+                _iconFor(event.eventType),
                 size: 20,
                 color: warm ? const Color(0xFFAD7B38) : const Color(0xFF74869A),
               ),
               const SizedBox(width: 7),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFF8B98A8),
+                    Text(
+                      event.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF8B98A8),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -356,11 +447,21 @@ class MapEvent extends StatelessWidget {
       ),
     );
   }
+
+  IconData _iconFor(String eventType) {
+    return switch (eventType) {
+      'fallDetected' => Icons.check_circle_outline_rounded,
+      'animalDetected' => Icons.pest_control_rodent_outlined,
+      'deliveryDetected' => Icons.inventory_2_outlined,
+      _ => Icons.notifications_none_rounded,
+    };
+  }
 }
 
 class HomeMapPainter extends CustomPainter {
-  const HomeMapPainter(this.showCoverage);
+  const HomeMapPainter(this.map, this.showCoverage);
 
+  final GuardianMapSnapshot map;
   final bool showCoverage;
 
   @override
@@ -377,80 +478,71 @@ class HomeMapPainter extends CustomPainter {
       size.width - padding,
       size.height - padding,
     );
-    final wall = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(home, const Radius.circular(12)),
-      wall,
-    );
-    final vertical = home.left + home.width * 0.58;
-    final horizontal = home.top + home.height * 0.61;
-    canvas.drawLine(
-      Offset(vertical, home.top),
-      Offset(vertical, home.bottom),
-      wall,
-    );
-    canvas.drawLine(
-      Offset(home.left, horizontal),
-      Offset(home.right, horizontal),
-      wall,
-    );
-
-    _fillRoom(
-      canvas,
-      Rect.fromLTRB(home.left + 4, home.top + 4, vertical - 4, horizontal - 4),
-      const Color(0xFFF3EFE8),
-    );
-    _fillRoom(
-      canvas,
-      Rect.fromLTRB(vertical + 4, home.top + 4, home.right - 4, horizontal - 4),
-      const Color(0xFFF1F5F7),
-    );
-    _fillRoom(
-      canvas,
-      Rect.fromLTRB(
-        vertical + 4,
-        horizontal + 4,
-        home.right - 4,
-        home.bottom - 4,
-      ),
-      const Color(0xFFE8EEF5),
-    );
-    _fillRoom(
-      canvas,
-      Rect.fromLTRB(
-        home.left + 4,
-        horizontal + 4,
-        vertical - 4,
-        home.bottom - 4,
-      ),
-      const Color(0xFFEDE8DE),
-    );
+    for (var index = 0; index < map.rooms.length; index++) {
+      _drawRoom(canvas, home, map.rooms[index], index);
+    }
 
     if (showCoverage) {
       final coverage = Paint()
         ..color = const Color(0xFF0876F9).withValues(alpha: 0.12);
-      canvas.drawCircle(
-        Offset(home.left + home.width * 0.38, home.top + home.height * 0.38),
-        size.width * 0.3,
-        coverage,
-      );
-      canvas.drawCircle(
-        Offset(home.right, home.bottom),
-        size.width * 0.24,
-        coverage,
-      );
+      for (final device in map.devices.where((device) => device.online)) {
+        canvas.drawCircle(
+          _toCanvasPoint(home, device.position),
+          home.width * device.coverageRadius,
+          coverage,
+        );
+      }
     }
-    _drawLabel(canvas, '客厅', Offset(home.left + 12, home.top + 12));
-    _drawLabel(canvas, '厨房', Offset(vertical + 12, home.top + 12));
-    _drawLabel(canvas, '玄关', Offset(home.left + 12, horizontal + 12));
-    _drawLabel(canvas, '卧室', Offset(vertical + 12, horizontal + 12));
+    for (final room in map.rooms) {
+      _drawLabel(canvas, room.name, _toCanvasPoint(home, room.labelPosition));
+    }
   }
 
-  void _fillRoom(Canvas canvas, Rect rect, Color color) {
-    canvas.drawRect(rect, Paint()..color = color);
+  void _drawRoom(Canvas canvas, Rect home, GuardianRoom room, int index) {
+    if (room.polygon.isEmpty) return;
+    final path = Path();
+    final first = _toCanvasPoint(home, room.polygon.first);
+    path.moveTo(first.dx, first.dy);
+    for (final point in room.polygon.skip(1)) {
+      final offset = _toCanvasPoint(home, point);
+      path.lineTo(offset.dx, offset.dy);
+    }
+    path.close();
+    canvas
+      ..drawPath(path, Paint()..color = _roomColor(room, index))
+      ..drawPath(
+        path,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 7
+          ..strokeJoin = StrokeJoin.round,
+      );
+  }
+
+  Color _roomColor(GuardianRoom room, int index) {
+    if (room.privacyEnabled) return const Color(0xFFDDE3E9);
+    if (room.monitoringStatus == RoomMonitoringStatus.unmonitored) {
+      return const Color(0xFFE8EEF5);
+    }
+    if (room.scanStatus != RoomScanStatus.completed) {
+      return const Color(0xFFEDE8DE);
+    }
+    const activeColors = [
+      Color(0xFFF3EFE8),
+      Color(0xFFF1F5F7),
+      Color(0xFFEDE8DE),
+    ];
+    return activeColors[index % activeColors.length];
+  }
+
+  Offset _toCanvasPoint(Rect bounds, MapPoint point) {
+    final x = point.x.clamp(0.0, 1.0);
+    final y = point.y.clamp(0.0, 1.0);
+    return Offset(
+      bounds.left + bounds.width * x,
+      bounds.top + bounds.height * y,
+    );
   }
 
   void _drawLabel(Canvas canvas, String label, Offset offset) {
@@ -466,5 +558,5 @@ class HomeMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant HomeMapPainter oldDelegate) =>
-      oldDelegate.showCoverage != showCoverage;
+      oldDelegate.map != map || oldDelegate.showCoverage != showCoverage;
 }

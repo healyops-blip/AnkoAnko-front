@@ -9,6 +9,7 @@ void main() {
     AnkoApp(
       authRepository: services.authRepository,
       familyRepositoryFactory: services.familyRepositoryFactory,
+      guardianMapRepositoryFactory: services.guardianMapRepositoryFactory,
       smokeMode: services.smokeMode,
     ),
   );
