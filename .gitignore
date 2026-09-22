@@ -16,6 +16,36 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+
+# Local datasets, databases, and exports
+# Keep this root-scoped so source folders such as app/lib/data remain tracked.
+/data/
+/datasets/
+/local-data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.csv
+*.tsv
+*.parquet
+*.arrow
+*.feather
+*.ndjson
+
+# Temporary files and tool caches
+.cache/
+.tmp/
+/tmp/
+/temp/
+*.tmp
+*.temp
+*.bak
+*.orig
+*~
 
 # Dart and Flutter generated files
 .dart_tool/
@@ -27,6 +57,15 @@ Thumbs.db
 **/coverage/
 **/doc/api/
 **/ios/Flutter/.last_build_id
+
+# Code-quality and test reports
+.eslintcache
+.stylelintcache
+.nyc_output/
+test-results/
+playwright-report/
+junit*.xml
+lcov.info
 
 # Android generated and local files
 **/android/.gradle/
