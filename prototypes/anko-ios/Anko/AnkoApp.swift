@@ -159,7 +159,7 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
             let tabWidth = tabBar.bounds.width / CGFloat(tabDefinitions.count)
             guard tabWidth > 0, Int(gesture.location(in: tabBar).x / tabWidth) == 1 else { return }
             isVoiceLongPressActive = true
-            command("openVoice", arguments: [])
+            command("toggleVoice", arguments: [])
         case .ended, .cancelled, .failed:
             guard isVoiceLongPressActive else { return }
             isVoiceLongPressActive = false
@@ -173,8 +173,9 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
         switch gesture.state {
         case .began:
             guard selectedIndex == 1 else { return }
+            guard !tabBar.frame.contains(gesture.location(in: view)) else { return }
             isVoiceLongPressActive = true
-            command("openVoice", arguments: [])
+            command("toggleVoice", arguments: [])
         case .ended, .cancelled, .failed:
             guard isVoiceLongPressActive else { return }
             isVoiceLongPressActive = false

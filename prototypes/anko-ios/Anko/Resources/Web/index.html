@@ -48,6 +48,15 @@ html,body{background:#f3f6fa;color:#18222f}body{background:radial-gradient(ellip
 #anko-v9 .screen[data-page="home"] .metrics{padding:10px 0;margin-bottom:10px}
 #anko-v9 .screen[data-page="home"] .metrics strong{line-height:1.3}
 #anko-v9 .screen[data-page="home"] .brief{padding-bottom:8px}
+#anko-v9 .screen[data-page="home"] .home-header{min-height:50px;padding-top:8px;padding-bottom:8px;justify-content:flex-end}
+#anko-v9 .home-completeness{display:block;width:100%;padding:0 2px 8px;background:transparent;color:var(--a-muted);font-size:10px;text-align:right}
+#anko-v9 .home-safety-slide{display:none;min-height:112px;align-content:center;justify-items:start;text-align:left}
+#anko-v9 .home-safety-slide small{margin-bottom:7px}
+#anko-v9 .home-safety-slide strong{font-size:29px;line-height:1.1;color:var(--a-ink)}
+#anko-v9 .home-safety-slide strong b{font-size:42px;font-weight:600;color:var(--a-blue)}
+#anko-v9 .home-safety-slide em{margin-top:7px;color:var(--a-muted);font-size:10px;font-style:normal}
+#anko-v9 .bubble[data-home-slide="safety"]>:not(.home-safety-slide){display:none}
+#anko-v9 .bubble[data-home-slide="safety"]>.home-safety-slide{display:grid}
 /* Shared light/dark appearance, with Anko blue as the accent. */
 #anko-v9 .theme-panel{padding:19px;background:var(--a-card);border-radius:20px;margin:0 0 16px}
 #anko-v9 .theme-panel h3{font-size:16px;font-weight:600}
@@ -159,6 +168,10 @@ html[data-theme="dark"] body{background:radial-gradient(ellipse at 70% 40%,#1724
 #anko-v9.quiet .bottomnav:before,#anko-v9.quiet .segment-slot:before,#anko-v9.quiet .control-slot input:before{transition:none}
 #anko-v9 .bottomnav,#anko-v9 .control-slot input{touch-action:pan-y}
 #anko-v9 .screen:is([data-page="share"],[data-page="mine"],[data-page="fog"]) .assistant-global{display:none}
+
+/* Keep the full-size home map vertically draggable on touch screens. */
+#anko-v9 .screen[data-page="home"] #a6-page{overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y}
+#anko-v9 .screen[data-page="home"] .companion{height:153px;min-height:153px}
 
 /* Anko responds to actions; expression assets are shared by both editions. */
 #anko-v9 .sprite{background-image:var(--anko-expression,var(--panther))!important}
@@ -297,11 +310,11 @@ function persist(){try{const {photo,history,page,...rest}=state;localStorage.set
 function applyTheme(){
  const theme=state.theme==='dark'?'dark':'light';state.theme=theme;root.dataset.theme=theme;document.documentElement.dataset.theme=theme;document.querySelector('meta[name="theme-color"]').content=theme==='dark'?'#111419':'#f6f8fb';try{window.webkit?.messageHandlers?.theme?.postMessage(theme)}catch{}
 }
-function render(){applyTheme();persist();root.querySelector('.screen').dataset.page=state.page;root.classList.toggle('quiet',state.reduced);page.innerHTML=header()+`<main class="content">${pages[state.page]()}</main>`;root.querySelectorAll('.navitem').forEach(el=>{const active=el.dataset.go===navigationGroup();el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current')});icons();enhanceControls();paintAnko()}
+function render(){applyTheme();persist();root.querySelector('.screen').dataset.page=state.page;root.classList.toggle('quiet',state.reduced);page.innerHTML=header()+`<main class="content">${pages[state.page]()}</main>`;root.querySelectorAll('.navitem').forEach(el=>{const active=el.dataset.go===navigationGroup();el.classList.toggle('active',active);if(active)el.setAttribute('aria-current','page');else el.removeAttribute('aria-current')});icons();enhanceControls();paintAnko();syncHomeBubbleRotation()}
 function icons(){root.querySelectorAll('i[data-lucide]').forEach(el=>el.outerHTML=icon(el.dataset.lucide));}
 function go(p){if(!pages[p])return;if(p==='share'&&state.page!=='sharepreview'){state.draft={...(state.savedShare||{join:state.joined,publish:state.published,layout:false,rules:true})};state.draftName=state.publicName;}if(p==='sharepreview'&&state.page==='ranking'&&state.publishedSnapshot){state.draft={...state.publishedSnapshot};state.draftName=state.publicName;}close();if(p!==state.page)state.history.push(state.page);state.page=p;render();page.scrollTop=0;}
 function toast(s){const el=root.querySelector('#a6-toast');el.textContent=s;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3800)}
-let voiceHoldTimer=0,voicePointer=null,voiceActive=false,suppressVoiceClickUntil=0,homeMapReturn=null,homeCompanionReturn=null;
+let voiceHoldTimer=0,homeBubbleTimer=0,voicePointer=null,voiceActive=false,suppressVoiceClickUntil=0,homeMapReturn=null,homeCompanionReturn=null;
 function mountHomeMapPreview(){
  const map=page.querySelector('.world');if(!map){voiceMapSlot.innerHTML='<span class="voice-map-empty">家园</span>';return;}
  homeMapReturn={map,parent:map.parentNode,next:map.nextSibling};voiceMapSlot.replaceChildren();voiceMapSlot.append(map);
@@ -320,7 +333,7 @@ function restoreHomeCompanion(){
 }
 function openVoiceConversation(){
  if(!voicePanel.hidden)return;
- if(state.page!=='home')go('home');mountHomeMapPreview();mountHomeCompanion();
+ if(state.page!=='home')go('home');clearInterval(homeBubbleTimer);homeBubbleTimer=0;setHomeBubbleSlide('message');mountHomeMapPreview();mountHomeCompanion();
  voiceActive=true;voicePanel.hidden=false;voicePanel.classList.remove('responding');voiceCard.classList.remove('text-mode');voiceTextPanel.hidden=true;voiceStatus.textContent='Anko 正在聆听';voiceHint.textContent='松开后结束说话';
  requestAnimationFrame(()=>voicePanel.classList.add('active'));root.dispatchEvent(new Event('anko:pet'));navigator.vibrate?.(18);
 }
@@ -333,8 +346,9 @@ function enterVoiceTextMode(){
 }
 function closeVoiceConversation(immediate=false){
  voiceActive=false;voicePanel.classList.remove('active','responding');voiceCard.classList.remove('text-mode');voiceTextPanel.hidden=true;
- const finish=()=>{voicePanel.hidden=true;restoreHomeMap();restoreHomeCompanion()};if(immediate)finish();else setTimeout(finish,240);
+ const finish=()=>{voicePanel.hidden=true;restoreHomeMap();restoreHomeCompanion();syncHomeBubbleRotation()};if(immediate)finish();else setTimeout(finish,240);
 }
+function toggleVoiceConversation(){voicePanel.hidden?openVoiceConversation():closeVoiceConversation()}
 function close(){overlay.hidden=true;publishNative();if(lastFocus&&lastFocus.isConnected)lastFocus.focus()}
 function show(type){lastFocus=document.activeElement;let title='',body='';const action=(t,a,c)=>button(t,`data-action="${a}"`,c);
 if(type==='anko'){title='Anko · 你的 Anko';body=`${guide(state.urgent&&!state.fallDone?'客厅疑似跌倒还没有确认。我先带你去处理。':'我在这里。想看看家里发生了什么，还是给家人留句话？')}<div class="quickgrid">${[['house','家园','home'],['list-video','事件','events'],['users','家人','family'],['paw-print','Anko成长','pet'],['image','照片便签','note'],['cctv','设备覆盖','devices']].map(([i,t,p])=>`<button class="quick" data-go="${p}">${icon(i)}${t}</button>`).join('')}</div><div class="actions">${button('今天家里怎样？','data-action="ask"','primary')}${button('语音交流','data-action="voice"')}</div>`}
@@ -416,15 +430,34 @@ root.addEventListener('keydown',e=>{if(e.target.matches('.theme-choice')&&['Arro
 
 
 const originalHome=pages.home;
+function placeCompanionAboveMap(markup){
+ const companionPattern=/<section class="companion[\s\S]*?<\/section>/,companion=markup.match(companionPattern)?.[0];
+ if(!companion)return markup;
+ return markup.replace(companionPattern,'').replace(/(<button class="brief[\s\S]*?<\/button>)/,`$1${companion}`);
+}
+function removeMapShortcuts(markup){return markup.replace(/<div class="maptools">[\s\S]*?<\/div>/,'')}
+function removeHomeSummary(markup){return markup.replace(/<button class="brief[\s\S]*?<\/button>/,'')}
+function renameHomeMap(markup){return markup.replace('<div class="maplabel">我的家园','<div class="maplabel">Anko守护')}
+function addSafetySlideToCompanion(markup,emergency){
+ if(emergency)return markup;
+ const safety=`<span class="home-safety-slide" data-home-safety-slide><small>Anko · 家园安全</small><strong><b>${calcSafety()}</b> / 100</strong><em>自动守护评估 · 点击查看说明</em></span>`;
+ return markup.replace('</button><div class="replyline">',`${safety}</button><div class="replyline">`).replace('ANKO 帮你转达 · 妈妈 17:42','妈妈 17:42');
+}
+function setHomeBubbleSlide(slide){const bubble=page.querySelector('.companion .bubble');if(bubble)bubble.dataset.homeSlide=slide}
+function syncHomeBubbleRotation(){
+ clearInterval(homeBubbleTimer);homeBubbleTimer=0;
+ const bubble=page.querySelector('.companion .bubble[data-go="note"]');if(state.page!=='home'||!bubble?.querySelector('[data-home-safety-slide]'))return;
+ setHomeBubbleSlide('message');homeBubbleTimer=setInterval(()=>{if(voicePanel.hidden)setHomeBubbleSlide(bubble.dataset.homeSlide==='safety'?'message':'safety')},4800);
+}
 pages.home=()=>{
  const emergency=state.urgent&&!state.fallDone;
- let body=originalHome();
+ let body=addSafetySlideToCompanion(renameHomeMap(removeHomeSummary(placeCompanionAboveMap(removeMapShortcuts(originalHome())))),emergency);
  body=body.replace(/<div class="corner">[\s\S]*?<div class="house">/,'<div class="house">');
  body=body.replace('<small>数字家园 · 傍晚</small>','<small>4 个房间 · 与家保持连接</small>');
- const metrics=`<section class="metrics" aria-label="家庭状态">${[['安全值',emergency?'—':calcSafety(),'safety',emergency?'请先核实':'查看守护详情'],['空间完整',state.layoutDone?'100%':'75%','complete','4 个房间']].map(([label,v,k,sub])=>`<button data-modal="${k}"><span>${label}</span><strong>${v}<small>${k==='complete'?'':' / 100'}</small></strong><em>${sub}</em></button>`).join('')}</section>`;
- return metrics+body;
+ const completeness=`<button class="home-completeness" data-modal="complete">空间完整度 ${state.layoutDone?'100%':'75%'} · 4 个房间</button>`;
+ return completeness+body;
 };
-header=()=>state.page==='home'?`<header class="header home-header"><div><div class="eyebrow">ANKER SMART HOME</div><button class="home-title" data-go="setup">${esc(state.familyName)} <span>⌄</span></button></div><div class="header-actions"><button class="iconbtn" data-go="events" aria-label="今日消息">${icon('bell-ring')}<b></b></button><button class="iconbtn" data-go="setup" aria-label="家庭设置">${icon('settings')}</button></div></header>`:baseHeader().replace('class="header"','class="header secondary"');
+header=()=>state.page==='home'?`<header class="header home-header"><div class="header-actions"><button class="iconbtn" data-go="events" aria-label="今日消息">${icon('bell-ring')}<b></b></button><button class="iconbtn" data-go="setup" aria-label="家庭设置">${icon('settings')}</button></div></header>`:baseHeader().replace('class="header"','class="header secondary"');
 function themePanel(){return `<section class="theme-panel" aria-labelledby="theme-heading"><h3 id="theme-heading">外观主题</h3><p>选一种喜欢的氛围，让 Anko 陪你。</p>${segmentControl('theme','外观主题',['白色','黑色'],state.theme==='dark'?1:0)}</section>`}
 const baseMine=pages.mine;pages.mine=()=>themePanel()+baseMine()+`<label class="scenario-setting">演示场景<select class="demo"><option value="daily" ${!state.urgent?'selected':''}>日常守护</option><option value="urgent" ${state.urgent?'selected':''}>紧急事件</option></select></label>`;
 // One state model, with UIKit controls on iOS and accessible web equivalents.
@@ -467,6 +500,7 @@ function publishNative(){
  });
 }
 root.addEventListener('change',e=>{if(e.target.dataset.control){e.stopImmediatePropagation();setNativeControl(e.target.dataset.control,e.target.checked);}},true);
+root.addEventListener('click',e=>{const bubble=e.target.closest('.bubble[data-home-slide="safety"]');if(!bubble||!voicePanel.hidden)return;e.preventDefault();e.stopImmediatePropagation();show('safety');},true);
 root.addEventListener('click',e=>{const b=e.target.closest('[data-segment]');if(b){e.stopImmediatePropagation();setNativeControl(b.dataset.segment,Number(b.dataset.index));}},true);
 root.addEventListener('keydown',e=>{const b=e.target.closest('[data-segment]');if(b&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)){e.preventDefault();e.stopImmediatePropagation();const value=e.key==='Home'?0:e.key==='End'?1:1-Number(b.dataset.index);setNativeControl(b.dataset.segment,value);page.querySelector(`[data-segment="${b.dataset.segment}"][data-index="${value}"]`)?.focus({preventScroll:true});}},true);
 if(window.ankoNative&&typeof ResizeObserver!=='undefined'){
@@ -474,7 +508,7 @@ if(window.ankoNative&&typeof ResizeObserver!=='undefined'){
  page.addEventListener('animationend',publishNative);window.visualViewport?.addEventListener('resize',publishNative);
 }
 page.addEventListener('scroll',publishNative,{passive:true});sheet.addEventListener('scroll',publishNative,{passive:true});window.addEventListener('resize',publishNative);
-window.ankoNativeBridge={navigate:p=>go(p),setControl:setNativeControl,refresh:publishNative,openVoice:openVoiceConversation,finishVoice:finishVoiceConversation};
+window.ankoNativeBridge={navigate:p=>go(p),setControl:setNativeControl,refresh:publishNative,openVoice:openVoiceConversation,toggleVoice:toggleVoiceConversation,finishVoice:finishVoiceConversation};
 if(window.ankoNative){document.documentElement.classList.add('native-ui');}
 
 const voiceTargetSelector='.navitem[data-go="home"],.walker,.pet-touch,.companion-pet,.assistant-global,.petstage .sprite';
@@ -483,11 +517,16 @@ root.addEventListener('click',e=>{
  if(companionButton.matches('.companion-pet')){e.preventDefault();e.stopImmediatePropagation();root.dispatchEvent(new Event('anko:pet'));return;}
  closeVoiceConversation(true);
 },true);
+function startVoiceHold(e,target,action){
+ voicePointer={id:e.pointerId,target,startX:e.clientX,startY:e.clientY};clearTimeout(voiceHoldTimer);voiceHoldTimer=setTimeout(action,450);target.setPointerCapture?.(e.pointerId);
+}
 root.addEventListener('pointerdown',e=>{
+ const conversationAnko=e.target.closest('[data-voice-companion] .companion-pet');
+ if(!voicePanel.hidden){if(conversationAnko&&e.button===0)startVoiceHold(e,conversationAnko,toggleVoiceConversation);return;}
  const target=e.target.closest(voiceTargetSelector),isHomeSurface=state.page==='home'&&e.target.closest('#a6-page');
- if((!target&&!isHomeSurface)||e.button!==0||!voicePanel.hidden)return;
+ if((!target&&!isHomeSurface)||e.button!==0)return;
  if(!target&&e.target.closest('button,a,input,select,textarea,[data-native-control]'))return;
- const holdTarget=target||e.target;voicePointer={id:e.pointerId,target:holdTarget,startX:e.clientX,startY:e.clientY};clearTimeout(voiceHoldTimer);voiceHoldTimer=setTimeout(openVoiceConversation,450);holdTarget.setPointerCapture?.(e.pointerId);
+ const holdTarget=target||e.target;startVoiceHold(e,holdTarget,openVoiceConversation);
 });
 root.addEventListener('pointermove',e=>{if(voicePointer&&Math.hypot(e.clientX-voicePointer.startX,e.clientY-voicePointer.startY)>12){clearTimeout(voiceHoldTimer);voicePointer=null;}});
 function releaseVoiceHold(e){
