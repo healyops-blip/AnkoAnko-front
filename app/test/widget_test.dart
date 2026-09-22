@@ -27,6 +27,9 @@ void main() {
     expect(find.byKey(const Key('contact-screen')), findsOneWidget);
     expect(find.text('联系家人'), findsOneWidget);
     expect(find.text('妈妈'), findsOneWidget);
+    expect(find.text('奶奶'), findsNothing);
+    expect(find.text('+86 **** 1002'), findsNothing);
+    expect(find.text('+86 **** 1001'), findsOneWidget);
     expect(find.text('奶奶 · 奶奶'), findsNothing);
     expect(find.textContaining('smoke-member'), findsNothing);
 

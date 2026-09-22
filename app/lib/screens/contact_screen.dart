@@ -104,6 +104,10 @@ class _ContactContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final familyContacts = overview.contacts.where(
+      (contact) => !contact.isCurrentUser,
+    );
+
     return CustomScrollView(
       key: const Key('contact-screen'),
       slivers: [
@@ -122,7 +126,7 @@ class _ContactContent extends StatelessWidget {
             children: [
               _FamilyCodeCard(overview: overview, onJoinFamily: onJoinFamily),
               const SizedBox(height: 14),
-              ...overview.contacts.map(
+              ...familyContacts.map(
                 (contact) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: _ContactCard(
