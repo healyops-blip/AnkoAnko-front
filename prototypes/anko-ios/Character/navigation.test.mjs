@@ -1,0 +1,78 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const page = fs.readFileSync(new URL('../Anko/Resources/Web/index.html', import.meta.url), 'utf8');
+const swift = fs.readFileSync(new URL('../Anko/AnkoApp.swift', import.meta.url), 'utf8');
+const bottomNavigation = page.match(/<nav class="bottomnav"[\s\S]*?<\/nav>/)?.[0];
+
+assert(bottomNavigation, 'Bottom navigation must exist');
+assert.deepEqual(
+  [...bottomNavigation.matchAll(/data-go="([^"]+)"/g)].map((match) => match[1]),
+  ['family', 'home', 'mine'],
+);
+assert(!bottomNavigation.includes('家园'));
+assert.match(page, /const primaryDestinations=\['family','home','mine'\]/);
+assert.match(page, /function minePage\(\)\{return `\$\{ankoProfile\(\)\}/);
+assert.match(page, /function navigationGroup\(\)\{return state\.page==='home'\?'home':\['mine','pet'/);
+assert(!page.includes('有 Anko 的每一天'));
+assert(!page.includes('家在这里，<br>安心也在。'));
+assert(!page.includes('傍晚好，今天也辛苦了。'));
+assert(!page.includes('和 Anko 聊聊'));
+assert(!page.includes('Anko · 在家陪你'));
+assert.match(page, /return metrics\+body;/);
+assert.match(page, /function homeDisplaySettings\(\)\{return `<section class="control-panel" aria-label="家园显示设置">\$\{switchRow\('patrol','Anko 巡游','让 Anko 在家园中陪伴你',state\.petOnMap\)\}\$\{switchRow\('coverage','覆盖图层','显示设备的示意监测范围',state\.coverage\)\}<\/section>`\}/);
+assert.match(page, /setup:\(\)=>`<div class="stack">\$\{guide\([\s\S]*?\$\{homeDisplaySettings\(\)\}/);
+assert.doesNotMatch(page, /function minePage\(\)[^\n]*homeDisplaySettings/);
+assert(!page.includes("tools.insertAdjacentHTML('afterend'"));
+assert.match(page, /const state=\{page:'family'/);
+assert.match(page, /grid-template-columns:repeat\(3,1fr\)/);
+assert.match(page, /id="anko-voice" class="voice-conversation" hidden/);
+assert.match(page, /<div class="voice-title">对话模式<\/div>/);
+assert(!page.includes('ANKO · 对话模式'));
+assert(!page.includes('ANKO · 陪伴模式'));
+assert.match(page, /class="voice-map-preview" data-voice-map data-voice-home role="button" tabindex="0"/);
+assert.match(page, /class="voice-companion-stage" data-voice-companion/);
+assert.match(page, /function openVoiceConversation\(\)/);
+assert.match(page, /function openVoiceConversation\(\)\{\s*if\(!voicePanel\.hidden\)return;/);
+assert.match(page, /function mountHomeMapPreview\(\)/);
+assert.match(page, /voiceMapSlot\.append\(map\)/);
+assert.match(page, /function restoreHomeMap\(\)/);
+assert.match(page, /function mountHomeCompanion\(\)/);
+assert.match(page, /voiceCompanionSlot\.append\(companion\)/);
+assert.match(page, /function restoreHomeCompanion\(\)/);
+assert.match(page, /voiceHoldTimer=setTimeout\(openVoiceConversation,450\)/);
+assert.match(page, /function finishVoiceConversation\(\)/);
+assert.match(swift, /tabBar\.addGestureRecognizer\(makeVoiceLongPressGesture\(action: #selector\(handleAnkoLongPress\)\)\)/);
+assert.match(swift, /view\.addGestureRecognizer\(makeVoiceLongPressGesture\(action: #selector\(handleAnkoScreenLongPress\)\)\)/);
+assert.match(swift, /guard selectedIndex == 1 else \{ return \}/);
+assert.match(swift, /shouldRecognizeSimultaneouslyWith otherGestureRecognizer/);
+assert.match(page, /isHomeSurface=state\.page==='home'&&e\.target\.closest\('#a6-page'\)/);
+assert.match(page, /root\.addEventListener\('contextmenu'/);
+assert.match(page, /\.voice-companion-stage\{[^}]*transform:translate3d\(0,72%,0\)/);
+assert.match(page, /\.voice-conversation\.active \.voice-companion-stage\{transform:translate3d\(0,0,0\)/);
+assert.doesNotMatch(page, /class="voice-pet"/);
+assert(!page.includes('class="agent-badge"'));
+assert(!page.includes('点我聊一聊'));
+assert.match(page, /\.voice-companion-stage \.companion\{[^}]*grid-template-columns:minmax\(0,1fr\) 88px/);
+assert(!page.includes('我在这里，陪你一起看顾这个家。'));
+assert(!page.includes("voiceStatus.textContent='Anko 听到了'"));
+assert.match(page, /\.voice-card\{[^}]*padding:12px 16px/);
+assert.match(page, /\.voice-card p:empty\{display:none\}/);
+assert.match(page, /\.voice-card strong:empty\{display:none\}/);
+assert.match(page, /\.voice-companion-stage \.companion-pet \.sprite\{[^}]*border-radius:50%[^}]*overflow:hidden/);
+assert.match(page, /\.voice-companion-stage \.companion-pet \.sprite\{[^}]*width:64px!important[^}]*height:64px!important/);
+assert.match(page, /\.voice-conversation\{[^}]*justify-content:flex-start[^}]*padding:190px 24px 112px/);
+assert.match(page, /\.voice-card\{[^}]*margin-top:auto/);
+assert.match(page, /e\.target\.closest\('\[data-voice-home\]'\)/);
+assert.match(page, /data-voice-text>进入对话框模式/);
+assert.match(page, /data-voice-text-panel/);
+assert.match(page, /function enterVoiceTextMode\(\)/);
+assert(!page.includes('data-voice-close>结束对话'));
+assert.match(swift, /command\("openVoice", arguments: \[\]\)/);
+assert.match(swift, /command\("finishVoice", arguments: \[\]\)/);
+assert(!swift.includes('tabBar.selectedItem = nil'));
+assert.match(swift, /TabDefinition\(title: "家人", symbolName: "heart", destination: "family"\)/);
+assert.match(swift, /TabDefinition\(title: "Anko", symbolName: "pawprint", destination: "home"\)/);
+assert.match(swift, /TabDefinition\(title: "我的", symbolName: "person\.crop\.circle", destination: "mine"\)/);
+
+console.log('PASS bottom navigation: Family, Anko, and Mine only.');

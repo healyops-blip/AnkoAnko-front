@@ -33,14 +33,26 @@ struct NativeAnkoRoot: UIViewControllerRepresentable {
 
 // The shared web document owns app state. UIKit owns the tab bar, segmented
 // selectors and every binary switch, including their material and gestures.
-final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, WKScriptMessageHandler, WKNavigationDelegate {
-    private let destinations = ["home", "family", "pet", "mine"]
+final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, WKScriptMessageHandler, WKNavigationDelegate, UIGestureRecognizerDelegate {
+    private struct TabDefinition {
+        let title: String
+        let symbolName: String
+        let destination: String
+    }
+
+    private let tabDefinitions = [
+        TabDefinition(title: "家人", symbolName: "heart", destination: "family"),
+        TabDefinition(title: "Anko", symbolName: "pawprint", destination: "home"),
+        TabDefinition(title: "我的", symbolName: "person.crop.circle", destination: "mine"),
+    ]
+    private var destinations: [String] { tabDefinitions.map(\.destination) }
     private var webView: WKWebView!
     private let controlOverlay = PassthroughOverlay()
     private var controls: [String: UIControl] = [:]
     private var currentTheme: String
     private var onTheme: (String) -> Void
     private var ready = false
+    private var isVoiceLongPressActive = false
 
     init(theme: String, onTheme: @escaping (String) -> Void) {
         currentTheme = theme
@@ -54,12 +66,13 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
         delegate = self
         // No custom UITabBarAppearance/background: allow the OS to render Liquid Glass.
         tabBar.tintColor = .systemBlue
-        viewControllers = zip(["家园", "家人", "Anko", "我的"], ["house", "heart", "pawprint", "person.crop.circle"]).enumerated().map { index, item in
+        tabBar.addGestureRecognizer(makeVoiceLongPressGesture(action: #selector(handleAnkoLongPress)))
+        viewControllers = tabDefinitions.enumerated().map { index, tab in
             let child = UIViewController()
             child.edgesForExtendedLayout = .all
             child.extendedLayoutIncludesOpaqueBars = true
-            child.tabBarItem = UITabBarItem(title: item.0, image: UIImage(systemName: item.1), tag: index)
-            child.tabBarItem.selectedImage = UIImage(systemName: item.1 + ".fill") ?? UIImage(systemName: item.1)
+            child.tabBarItem = UITabBarItem(title: tab.title, image: UIImage(systemName: tab.symbolName), tag: index)
+            child.tabBarItem.selectedImage = UIImage(systemName: tab.symbolName + ".fill") ?? UIImage(systemName: tab.symbolName)
             return child
         }
         let configuration = WKWebViewConfiguration()
@@ -74,12 +87,14 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
         if previewTheme() != nil {
             let candidate = ProcessInfo.processInfo.environment["ANKO_PREVIEW_PAGE"] ?? "home"
             let page = ["home", "mine", "fog", "share", "pet"].contains(candidate) ? candidate : "home"
+            let openVoice = ProcessInfo.processInfo.environment["ANKO_PREVIEW_VOICE"] == "1" ? "window.ankoNativeBridge?.openVoice();" : ""
             configuration.userContentController.addUserScript(WKUserScript(
-                source: "window.ankoReview?.go('\(page)');window.ankoModelReview='\(ProcessInfo.processInfo.environment["ANKO_MODEL_REVIEW"] == "turn" ? "turn" : "")';",
+                source: "window.ankoReview?.go('\(page)');window.ankoModelReview='\(ProcessInfo.processInfo.environment["ANKO_MODEL_REVIEW"] == "turn" ? "turn" : "")';\(openVoice)",
                 injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
         #endif
         webView = GeometryAwareWebView(frame: .zero, configuration: configuration)
+        view.addGestureRecognizer(makeVoiceLongPressGesture(action: #selector(handleAnkoScreenLongPress)))
         webView.navigationDelegate = self
         webView.isOpaque = false
         webView.scrollView.bounces = false
@@ -138,6 +153,53 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
         command("navigate", arguments: [destinations[selectedIndex]])
     }
 
+    @objc private func handleAnkoLongPress(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            let tabWidth = tabBar.bounds.width / CGFloat(tabDefinitions.count)
+            guard tabWidth > 0, Int(gesture.location(in: tabBar).x / tabWidth) == 1 else { return }
+            isVoiceLongPressActive = true
+            command("openVoice", arguments: [])
+        case .ended, .cancelled, .failed:
+            guard isVoiceLongPressActive else { return }
+            isVoiceLongPressActive = false
+            command("finishVoice", arguments: [])
+        default:
+            break
+        }
+    }
+
+    @objc private func handleAnkoScreenLongPress(_ gesture: UILongPressGestureRecognizer) {
+        switch gesture.state {
+        case .began:
+            guard selectedIndex == 1 else { return }
+            isVoiceLongPressActive = true
+            command("openVoice", arguments: [])
+        case .ended, .cancelled, .failed:
+            guard isVoiceLongPressActive else { return }
+            isVoiceLongPressActive = false
+            command("finishVoice", arguments: [])
+        default:
+            break
+        }
+    }
+
+    private func makeVoiceLongPressGesture(action: Selector) -> UILongPressGestureRecognizer {
+        let gesture = UILongPressGestureRecognizer(target: self, action: action)
+        gesture.minimumPressDuration = 0.45
+        gesture.allowableMovement = 14
+        gesture.cancelsTouchesInView = false
+        gesture.delegate = self
+        return gesture
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        gestureRecognizer is UILongPressGestureRecognizer || otherGestureRecognizer is UILongPressGestureRecognizer
+    }
+
     private func command(_ method: String, arguments: [Any]) {
         guard ready,
               let data = try? JSONSerialization.data(withJSONObject: arguments),
@@ -157,9 +219,11 @@ final class AnkoTabController: UITabBarController, UITabBarControllerDelegate, W
         }
         guard message.name == "controls", let state = message.body as? [String: Any] else { return }
         ready = true
-        if let group = state["group"] as? String, let index = destinations.firstIndex(of: group), index != selectedIndex {
-            selectedIndex = index
-            mountDocument()
+        if let group = state["group"] as? String {
+            if let index = destinations.firstIndex(of: group), index != selectedIndex {
+                selectedIndex = index
+                mountDocument()
+            }
         }
         let modal = state["modal"] as? Bool ?? false
         tabBar.alpha = modal ? 0 : 1
