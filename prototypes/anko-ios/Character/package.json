@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "esbuild": "0.25.12",
+    "three": "0.184.0"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node motion.test.mjs && node model.test.mjs && node navigation.test.mjs"
+  }
+}
