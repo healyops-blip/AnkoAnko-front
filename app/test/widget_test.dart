@@ -74,6 +74,19 @@ void main() {
     expect(find.byKey(const Key('conversation-text-field')), findsOneWidget);
   });
 
+  testWidgets('message Anko long press is isolated from pull-down gesture', (
+    tester,
+  ) async {
+    await tester.pumpWidget(AnkoApp());
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.byKey(const Key('message-anko')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('anko-conversation-screen')), findsOneWidget);
+    expect(find.byKey(const Key('conversation-text-field')), findsOneWidget);
+  });
+
   testWidgets('pulls down into natural language chat and sends a message', (
     tester,
   ) async {

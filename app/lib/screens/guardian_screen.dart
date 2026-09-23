@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
 
 import '../data/guardian_map_repository.dart';
 import '../domain/guardian_map_models.dart';
@@ -91,18 +92,15 @@ class _GuardianScreenState extends State<GuardianScreen> {
       child: Card(
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: GestureDetector(
-          key: const Key('message-card-drag-region'),
-          behavior: HitTestBehavior.opaque,
-          onVerticalDragUpdate: _handleConversationDragUpdate,
-          onVerticalDragEnd: _handleConversationDragEnd,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildConversationDragTarget(
+                      key: const Key('message-card-drag-region'),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -134,19 +132,25 @@ class _GuardianScreenState extends State<GuardianScreen> {
                         ],
                       ),
                     ),
-                    GestureDetector(
-                      key: const Key('message-anko'),
-                      onLongPress: _openConversation,
-                      child: const AnkoImage(size: 108),
-                    ),
-                  ],
+                  ),
+                  _AnkoConversationTrigger(
+                    key: const Key('message-anko'),
+                    imageSize: 108,
+                    touchSize: 116,
+                    onLongPress: _openConversation,
+                  ),
+                ],
+              ),
+              _buildConversationDragTarget(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Transform.translate(
+                    offset: Offset(0, pullProgress * 4),
+                    child: _PullDownConversationCue(progress: pullProgress),
+                  ),
                 ),
-                Transform.translate(
-                  offset: Offset(0, pullProgress * 4),
-                  child: _PullDownConversationCue(progress: pullProgress),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -194,6 +198,16 @@ class _GuardianScreenState extends State<GuardianScreen> {
       _conversationPullDistance = (_conversationPullDistance + details.delta.dy)
           .clamp(0, 140);
     });
+  }
+
+  Widget _buildConversationDragTarget({required Widget child, Key? key}) {
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragUpdate: _handleConversationDragUpdate,
+      onVerticalDragEnd: _handleConversationDragEnd,
+      child: child,
+    );
   }
 
   void _handleConversationDragEnd(DragEndDetails details) {
@@ -259,6 +273,38 @@ class _PullDownConversationCue extends StatelessWidget {
                   duration: 560.ms,
                   color: const Color(0x99FFFFFF),
                 ),
+    );
+  }
+}
+
+class _AnkoConversationTrigger extends StatelessWidget {
+  const _AnkoConversationTrigger({
+    required this.imageSize,
+    required this.touchSize,
+    required this.onLongPress,
+    super.key,
+  });
+
+  final double imageSize;
+  final double touchSize;
+  final VoidCallback onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '长按 Anko 进入对话模式',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: () {
+          HapticFeedback.mediumImpact();
+          onLongPress();
+        },
+        child: SizedBox.square(
+          dimension: touchSize,
+          child: Center(child: AnkoImage(size: imageSize)),
+        ),
+      ),
     );
   }
 }
@@ -450,23 +496,24 @@ class _GuardianMapCanvas extends StatelessWidget {
   }
 
   Widget _positionAnko(Size size) {
-    const ankoSize = 78.0;
-    final left = (map.ankoPosition.x * size.width - ankoSize / 2).clamp(
+    const touchSize = 104.0;
+    const imageSize = 78.0;
+    final left = (map.ankoPosition.x * size.width - touchSize / 2).clamp(
       0.0,
-      size.width - ankoSize,
+      size.width - touchSize,
     );
-    final top = (map.ankoPosition.y * size.height - ankoSize / 2).clamp(
+    final top = (map.ankoPosition.y * size.height - touchSize / 2).clamp(
       0.0,
-      size.height - ankoSize,
+      size.height - touchSize,
     );
     return Positioned(
       left: left,
       top: top,
-      child: GestureDetector(
+      child: _AnkoConversationTrigger(
         key: const Key('map-anko'),
-        behavior: HitTestBehavior.opaque,
+        imageSize: imageSize,
+        touchSize: touchSize,
         onLongPress: onAnkoLongPress,
-        child: const AnkoImage(size: ankoSize),
       ),
     );
   }
