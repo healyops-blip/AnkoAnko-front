@@ -20,6 +20,8 @@ void main() {
     expect(find.byKey(const Key('bubble-navigation-bar')), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
     expect(find.text('空间完整度 75% · 4 个房间'), findsOneWidget);
+    expect(find.byKey(const Key('guardian-map-summary')), findsOneWidget);
+    expect(find.text('Anko守护'), findsNothing);
     expect(find.text('4 个房间 · 与家保持连接'), findsNothing);
     expect(find.text('2台在线 · 1处无监测'), findsOneWidget);
     expect(find.text('下滑进入自然语言对话'), findsNothing);

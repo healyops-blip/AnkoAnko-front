@@ -380,14 +380,33 @@ class GuardianMapCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Anko守护',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-            ),
-            Text(
-              '空间完整度 ${map.summary.completionPercent}% · '
-              '${map.summary.roomCount} 个房间',
-              style: const TextStyle(color: Color(0xFF8B99AA)),
+            Row(
+              key: const Key('guardian-map-summary'),
+              children: [
+                Expanded(
+                  child: Text(
+                    '空间完整度 ${map.summary.completionPercent}% · '
+                    '${map.summary.roomCount} 个房间',
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Color(0xFF66798C),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${map.summary.onlineDeviceCount}台在线 · '
+                  '${map.summary.unmonitoredRoomCount}处无监测',
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF66798C),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             AspectRatio(
@@ -399,24 +418,14 @@ class GuardianMapCard extends StatelessWidget {
                 onAnkoLongPress: onAnkoLongPress,
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.shield_outlined, color: Color(0xFF8292A4)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${map.summary.onlineDeviceCount}台在线 · '
-                    '${map.summary.unmonitoredRoomCount}处无监测',
-                    style: const TextStyle(color: Color(0xFF8292A4)),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: onCoverageChanged,
-                  icon: const Icon(Icons.layers_outlined),
-                  label: Text(showCoverage ? '关闭覆盖' : '覆盖图层'),
-                ),
-              ],
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onCoverageChanged,
+                icon: const Icon(Icons.layers_outlined),
+                label: Text(showCoverage ? '关闭覆盖' : '覆盖图层'),
+              ),
             ),
           ],
         ),
