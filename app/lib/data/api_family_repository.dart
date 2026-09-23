@@ -49,17 +49,16 @@ class ApiFamilyRepository implements FamilyRepository {
   }
 
   @override
-  Future<void> setEmergencyContact({
+  Future<void> replaceEmergencyContacts({
     required String householdId,
-    required String contactId,
-    required bool selected,
+    required List<EmergencyContactSelection> contacts,
   }) async {
     final response = await _client.put(
-      Uri.parse(
-        '$baseUrl/v1/families/$householdId/emergency-contacts/$contactId',
-      ),
+      Uri.parse('$baseUrl/v1/families/$householdId/emergency-contacts'),
       headers: _headers,
-      body: jsonEncode({'selected': selected}),
+      body: jsonEncode({
+        'contacts': contacts.map((contact) => contact.toJson()).toList(),
+      }),
     );
     _decodeResponse(response);
   }

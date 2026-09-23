@@ -8,10 +8,9 @@ abstract interface class FamilyRepository {
     required String memberNickname,
   });
 
-  Future<void> setEmergencyContact({
+  Future<void> replaceEmergencyContacts({
     required String householdId,
-    required String contactId,
-    required bool selected,
+    required List<EmergencyContactSelection> contacts,
   });
 }
 

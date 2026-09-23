@@ -17,7 +17,8 @@ class SmokeFamilyRepository implements FamilyRepository {
       throw const FamilyRepositoryException('请先通过家庭码加入家庭');
     }
     final selectedContacts =
-        store.emergencyContactsByOwner[current.memberId] ?? const <String>{};
+        store.emergencyContactsByOwner[current.memberId] ??
+        const <String, int>{};
     return FamilyOverview(
       internalHouseholdId: smokeFamilyId,
       householdName: 'Anko开发家庭',
@@ -32,7 +33,7 @@ class SmokeFamilyRepository implements FamilyRepository {
               phoneMasked: account.phoneMasked,
               permissions: account.permissions,
               isCurrentUser: account.ankoAccount == session.ankoAccount,
-              isEmergencyContact: selectedContacts.contains(account.memberId),
+              emergencyContactPriority: selectedContacts[account.memberId],
             ),
           )
           .toList(growable: false),
@@ -60,21 +61,28 @@ class SmokeFamilyRepository implements FamilyRepository {
   }
 
   @override
-  Future<void> setEmergencyContact({
+  Future<void> replaceEmergencyContacts({
     required String householdId,
-    required String contactId,
-    required bool selected,
+    required List<EmergencyContactSelection> contacts,
   }) async {
     await _delay();
     final current = _currentAccount();
-    if (contactId == current.memberId) {
+    if (contacts.length > 2) {
+      throw const FamilyRepositoryException('最多设置两位紧急联系人');
+    }
+    final contactIds = contacts.map((contact) => contact.contactMemberId);
+    if (contactIds.contains(current.memberId)) {
       throw const FamilyRepositoryException('不能将自己设为紧急联系人');
     }
-    final contacts = store.emergencyContactsByOwner.putIfAbsent(
-      current.memberId,
-      () => <String>{},
-    );
-    selected ? contacts.add(contactId) : contacts.remove(contactId);
+    final priorities = contacts.map((contact) => contact.priority).toSet();
+    if (contactIds.toSet().length != contacts.length ||
+        priorities.length != contacts.length ||
+        priorities.any((priority) => priority < 1 || priority > 2)) {
+      throw const FamilyRepositoryException('紧急联系人顺序无效');
+    }
+    store.emergencyContactsByOwner[current.memberId] = {
+      for (final contact in contacts) contact.contactMemberId: contact.priority,
+    };
   }
 
   SmokeAccount _currentAccount() {

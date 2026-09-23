@@ -6,7 +6,7 @@ class FamilyContact {
     required this.phoneMasked,
     required this.permissions,
     required this.isCurrentUser,
-    required this.isEmergencyContact,
+    this.emergencyContactPriority,
     this.avatarUrl,
   });
 
@@ -20,7 +20,7 @@ class FamilyContact {
         json['permissions'] as Map<String, dynamic>,
       ),
       isCurrentUser: json['isCurrentUser'] as bool,
-      isEmergencyContact: json['isEmergencyContact'] as bool,
+      emergencyContactPriority: json['emergencyContactPriority'] as int?,
       avatarUrl: json['avatarUrl'] as String?,
     );
   }
@@ -31,8 +31,25 @@ class FamilyContact {
   final String phoneMasked;
   final Map<String, bool> permissions;
   final bool isCurrentUser;
-  final bool isEmergencyContact;
+  final int? emergencyContactPriority;
   final String? avatarUrl;
+
+  bool get isEmergencyContact => emergencyContactPriority != null;
+}
+
+class EmergencyContactSelection {
+  const EmergencyContactSelection({
+    required this.contactMemberId,
+    required this.priority,
+  });
+
+  final String contactMemberId;
+  final int priority;
+
+  Map<String, dynamic> toJson() => {
+    'contactMemberId': contactMemberId,
+    'priority': priority,
+  };
 }
 
 class FamilyOverview {

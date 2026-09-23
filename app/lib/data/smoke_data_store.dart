@@ -73,7 +73,7 @@ class SmokeDataStore {
   SmokeDataStore() : accounts = _seedAccounts();
 
   final List<SmokeAccount> accounts;
-  final Map<String, Set<String>> emergencyContactsByOwner = {};
+  final Map<String, Map<String, int>> emergencyContactsByOwner = {};
 
   SmokeAccount? findByPhone(String phone) {
     for (final account in accounts) {

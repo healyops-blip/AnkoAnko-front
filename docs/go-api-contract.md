@@ -83,7 +83,7 @@ Response:
       "communicationMode":"standard",
       "phoneMasked":"+86 **** 1001",
       "isCurrentUser":true,
-      "isEmergencyContact":false,
+      "emergencyContactPriority":null,
       "avatarUrl":null
     }
   ]
@@ -108,18 +108,31 @@ These labels are test data, not values in a role/identity column.
 
 ## Emergency contacts
 
-`PUT /v1/families/{householdId}/emergency-contacts/{contactMemberId}`
+`PUT /v1/families/{householdId}/emergency-contacts`
 
 ```json
-{"selected":true}
+{
+  "contacts":[
+    {"contactMemberId":"uuid-mom","priority":1},
+    {"contactMemberId":"uuid-child","priority":2}
+  ]
+}
 ```
 
 ```json
-{"contactMemberId":"uuid","selected":true}
+{
+  "contacts":[
+    {"contactMemberId":"uuid-mom","priority":1},
+    {"contactMemberId":"uuid-child","priority":2}
+  ]
+}
 ```
 
-The service must derive the owner of this setting from the bearer token, reject
-self-selection, and ensure both members belong to the same family.
+The service must replace both slots atomically, derive the owner from the bearer
+token, reject self-selection and duplicate members, accept only priorities `1`
+and `2`, and ensure every selected member belongs to the same family. Sending an
+empty `contacts` list clears both slots. The contacts response exposes each
+member's slot as `emergencyContactPriority`; unselected members return `null`.
 
 ## 2D guardian map
 

@@ -4,6 +4,11 @@ import '../data/family_repository.dart';
 import '../domain/family_models.dart';
 import 'join_family_screen.dart';
 
+typedef EmergencyContactSelected = void Function(
+  int priority,
+  FamilyContact? contact,
+);
+
 class ContactScreen extends StatefulWidget {
   const ContactScreen({required this.repository, super.key});
 
@@ -68,40 +73,48 @@ class _ContactScreenState extends State<ContactScreen> {
     }
   }
 
-  Future<void> _setEmergencyContact(FamilyContact contact) async {
+  Future<void> _setEmergencyContact(
+    int priority,
+    FamilyContact? contact,
+  ) async {
     final overview = await _overview;
-    final previousContact = _selectedEmergencyContact(overview.contacts);
-    if (previousContact?.internalId == contact.internalId) return;
+    final selections = overview.contacts
+        .where(
+          (candidate) =>
+              candidate.emergencyContactPriority != null &&
+              candidate.emergencyContactPriority != priority &&
+              candidate.internalId != contact?.internalId,
+        )
+        .map(
+          (candidate) => EmergencyContactSelection(
+            contactMemberId: candidate.internalId,
+            priority: candidate.emergencyContactPriority!,
+          ),
+        )
+        .toList();
+    if (contact != null) {
+      selections.add(
+        EmergencyContactSelection(
+          contactMemberId: contact.internalId,
+          priority: priority,
+        ),
+      );
+    }
+    selections.sort((left, right) => left.priority.compareTo(right.priority));
     try {
-      if (previousContact != null) {
-        await widget.repository.setEmergencyContact(
-          householdId: overview.internalHouseholdId,
-          contactId: previousContact.internalId,
-          selected: false,
-        );
-      }
-      await widget.repository.setEmergencyContact(
+      await widget.repository.replaceEmergencyContacts(
         householdId: overview.internalHouseholdId,
-        contactId: contact.internalId,
-        selected: true,
+        contacts: selections,
       );
       if (!mounted) return;
       _reload();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('已将${contact.nickname}设为紧急联系人')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('紧急联系人已更新')));
     } on FamilyRepositoryException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     }
-  }
-
-  FamilyContact? _selectedEmergencyContact(List<FamilyContact> contacts) {
-    for (final contact in contacts) {
-      if (contact.isEmergencyContact) return contact;
-    }
-    return null;
   }
 }
 
@@ -114,7 +127,7 @@ class _ContactContent extends StatelessWidget {
 
   final FamilyOverview overview;
   final VoidCallback onJoinFamily;
-  final ValueChanged<FamilyContact> onEmergencyContactSelected;
+  final EmergencyContactSelected onEmergencyContactSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -167,52 +180,81 @@ class _EmergencyContactSelector extends StatelessWidget {
   });
 
   final List<FamilyContact> contacts;
-  final ValueChanged<FamilyContact> onSelected;
+  final EmergencyContactSelected onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final selectedContact = _findSelectedContact();
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: DropdownButtonFormField<String>(
-          key: ValueKey(
-            'emergency-contact-dropdown-${selectedContact?.internalId}',
-          ),
-          initialValue: selectedContact?.internalId,
-          decoration: const InputDecoration(
-            labelText: '紧急联系人',
-            prefixIcon: Icon(Icons.emergency_outlined),
-            border: OutlineInputBorder(),
-          ),
-          hint: const Text('请选择紧急联系人'),
-          items: contacts
-              .map(
-                (contact) => DropdownMenuItem(
-                  value: contact.internalId,
-                  child: Text(contact.nickname),
-                ),
-              )
-              .toList(growable: false),
-          onChanged: contacts.isEmpty ? null : _selectContact,
+        child: Column(
+          children: [
+            _buildDropdown(
+              priority: 1,
+              label: '第一紧急联系人',
+              key: const Key('first-emergency-contact-dropdown'),
+            ),
+            const SizedBox(height: 14),
+            _buildDropdown(
+              priority: 2,
+              label: '第二紧急联系人',
+              key: const Key('second-emergency-contact-dropdown'),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  FamilyContact? _findSelectedContact() {
+  Widget _buildDropdown({
+    required int priority,
+    required String label,
+    required Key key,
+  }) {
+    final selectedContact = _findContactAtPriority(priority);
+    final otherContact = _findContactAtPriority(priority == 1 ? 2 : 1);
+    final availableContacts = contacts
+        .where((contact) => contact.internalId != otherContact?.internalId)
+        .toList(growable: false);
+    return DropdownButtonFormField<String>(
+      key: key,
+      initialValue: selectedContact?.internalId ?? '',
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: const Icon(Icons.emergency_outlined),
+        border: const OutlineInputBorder(),
+      ),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('暂不设置')),
+        ...availableContacts.map(
+          (contact) => DropdownMenuItem(
+            value: contact.internalId,
+            child: Text(contact.nickname),
+          ),
+        ),
+      ],
+      onChanged: contacts.isEmpty
+          ? null
+          : (contactId) => _selectContact(priority, contactId),
+    );
+  }
+
+  FamilyContact? _findContactAtPriority(int priority) {
     for (final contact in contacts) {
-      if (contact.isEmergencyContact) return contact;
+      if (contact.emergencyContactPriority == priority) return contact;
     }
     return null;
   }
 
-  void _selectContact(String? contactId) {
-    if (contactId == null) return;
+  void _selectContact(int priority, String? contactId) {
+    if (contactId == null || contactId.isEmpty) {
+      onSelected(priority, null);
+      return;
+    }
     for (final contact in contacts) {
       if (contact.internalId == contactId) {
-        onSelected(contact);
+        onSelected(priority, contact);
         return;
       }
     }
@@ -305,9 +347,22 @@ class _ContactCard extends StatelessWidget {
               ),
             ),
             if (contact.isEmergencyContact)
-              const Tooltip(
+              Tooltip(
                 message: '紧急联系人',
-                child: Icon(Icons.emergency_rounded, color: Color(0xFFD63C32)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.emergency_rounded,
+                      color: Color(0xFFD63C32),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      contact.emergencyContactPriority == 1 ? '第一' : '第二',
+                      style: const TextStyle(color: Color(0xFFD63C32)),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
