@@ -385,7 +385,8 @@ class GuardianMapCard extends StatelessWidget {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             Text(
-              '空间完整度 ${map.completionPercent}% · ${map.rooms.length} 个房间',
+              '空间完整度 ${map.summary.completionPercent}% · '
+              '${map.summary.roomCount} 个房间',
               style: const TextStyle(color: Color(0xFF8B99AA)),
             ),
             const SizedBox(height: 14),
@@ -405,8 +406,8 @@ class GuardianMapCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    '${map.onlineDeviceCount}台在线 · '
-                    '${map.unmonitoredRoomCount}处无监测',
+                    '${map.summary.onlineDeviceCount}台在线 · '
+                    '${map.summary.unmonitoredRoomCount}处无监测',
                     style: const TextStyle(color: Color(0xFF8292A4)),
                   ),
                 ),

@@ -146,7 +146,12 @@ Flutter client uses the same payload for every screen size.
 {
   "mapId":"map-home",
   "mapVersion":1,
-  "completionPercent":75,
+  "summary":{
+    "completionPercent":75,
+    "roomCount":4,
+    "onlineDeviceCount":2,
+    "unmonitoredRoomCount":1
+  },
   "rooms":[
     {
       "id":"room-living",
@@ -190,6 +195,11 @@ Flutter client uses the same payload for every screen size.
   "ankoPosition":{"x":0.53,"y":0.55}
 }
 ```
+
+`summary` is required and is the authoritative source for the guardian card's
+headline values. The Flutter client displays these four values directly and
+does not recalculate them from `rooms` or `devices`. The detailed arrays remain
+required because they drive map geometry, device coverage and event markers.
 
 Allowed room values:
 

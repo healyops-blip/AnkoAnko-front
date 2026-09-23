@@ -11,10 +11,11 @@ void main() {
   test('smoke map exposes normalized 2D rooms, devices and events', () async {
     final map = await const SmokeGuardianMapRepository().fetchMap();
 
-    expect(map.completionPercent, 75);
+    expect(map.summary.completionPercent, 75);
+    expect(map.summary.roomCount, 4);
     expect(map.rooms, hasLength(4));
-    expect(map.onlineDeviceCount, 2);
-    expect(map.unmonitoredRoomCount, 1);
+    expect(map.summary.onlineDeviceCount, 2);
+    expect(map.summary.unmonitoredRoomCount, 1);
     expect(map.events, isNotEmpty);
     expect(
       map.rooms.expand((room) => room.polygon),
@@ -51,6 +52,8 @@ void main() {
     );
     expect(capturedRequest.headers['authorization'], 'Bearer test-token');
     expect(map.mapId, 'map-1');
+    expect(map.summary.roomCount, 1);
+    expect(map.summary.onlineDeviceCount, 1);
     expect(map.rooms.single.name, '客厅');
     expect(map.events.single.severity, GuardianEventSeverity.warning);
   });
@@ -59,7 +62,12 @@ void main() {
 const _apiResponse = {
   'mapId': 'map-1',
   'mapVersion': 2,
-  'completionPercent': 100,
+  'summary': {
+    'completionPercent': 100,
+    'roomCount': 1,
+    'onlineDeviceCount': 1,
+    'unmonitoredRoomCount': 0,
+  },
   'rooms': [
     {
       'id': 'room-1',

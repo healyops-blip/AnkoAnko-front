@@ -10,7 +10,12 @@ class SmokeGuardianMapRepository implements GuardianMapRepository {
     return const GuardianMapSnapshot(
       mapId: 'smoke-map-home',
       mapVersion: 1,
-      completionPercent: 75,
+      summary: GuardianMapSummary(
+        completionPercent: 75,
+        roomCount: 4,
+        onlineDeviceCount: 2,
+        unmonitoredRoomCount: 1,
+      ),
       rooms: [
         GuardianRoom(
           id: 'room-living',

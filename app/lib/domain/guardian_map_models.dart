@@ -126,11 +126,34 @@ class GuardianMapEvent {
   final String status;
 }
 
+class GuardianMapSummary {
+  const GuardianMapSummary({
+    required this.completionPercent,
+    required this.roomCount,
+    required this.onlineDeviceCount,
+    required this.unmonitoredRoomCount,
+  });
+
+  factory GuardianMapSummary.fromJson(Map<String, dynamic> json) {
+    return GuardianMapSummary(
+      completionPercent: json['completionPercent'] as int,
+      roomCount: json['roomCount'] as int,
+      onlineDeviceCount: json['onlineDeviceCount'] as int,
+      unmonitoredRoomCount: json['unmonitoredRoomCount'] as int,
+    );
+  }
+
+  final int completionPercent;
+  final int roomCount;
+  final int onlineDeviceCount;
+  final int unmonitoredRoomCount;
+}
+
 class GuardianMapSnapshot {
   const GuardianMapSnapshot({
     required this.mapId,
     required this.mapVersion,
-    required this.completionPercent,
+    required this.summary,
     required this.rooms,
     required this.devices,
     required this.events,
@@ -141,7 +164,9 @@ class GuardianMapSnapshot {
     return GuardianMapSnapshot(
       mapId: json['mapId'] as String,
       mapVersion: json['mapVersion'] as int,
-      completionPercent: json['completionPercent'] as int,
+      summary: GuardianMapSummary.fromJson(
+        json['summary'] as Map<String, dynamic>,
+      ),
       rooms: (json['rooms'] as List<dynamic>)
           .map((room) => GuardianRoom.fromJson(room as Map<String, dynamic>))
           .toList(growable: false),
@@ -163,17 +188,9 @@ class GuardianMapSnapshot {
 
   final String mapId;
   final int mapVersion;
-  final int completionPercent;
+  final GuardianMapSummary summary;
   final List<GuardianRoom> rooms;
   final List<GuardianDevice> devices;
   final List<GuardianMapEvent> events;
   final MapPoint ankoPosition;
-
-  int get onlineDeviceCount => devices.where((device) => device.online).length;
-
-  int get unmonitoredRoomCount => rooms
-      .where(
-        (room) => room.monitoringStatus == RoomMonitoringStatus.unmonitored,
-      )
-      .length;
 }
