@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../data/guardian_map_repository.dart';
 import '../domain/guardian_map_models.dart';
@@ -140,27 +141,9 @@ class _GuardianScreenState extends State<GuardianScreen> {
                     ),
                   ],
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Transform.translate(
-                      offset: Offset(0, pullProgress * 4),
-                      child: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 20,
-                        color: Color(0xFF7391AD),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      pullProgress >= 1 ? '松开进入对话' : '下滑进入自然语言对话',
-                      style: const TextStyle(
-                        color: Color(0xFF7391AD),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                Transform.translate(
+                  offset: Offset(0, pullProgress * 4),
+                  child: _PullDownConversationCue(progress: pullProgress),
                 ),
               ],
             ),
@@ -239,6 +222,43 @@ class _GuardianScreenState extends State<GuardianScreen> {
           child: child,
         ),
       ),
+    );
+  }
+}
+
+class _PullDownConversationCue extends StatelessWidget {
+  const _PullDownConversationCue({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(
+      Icons.keyboard_double_arrow_down_rounded,
+      key: const Key('conversation-pull-cue'),
+      size: 25 + progress * 3,
+      color: Color.lerp(
+        const Color(0xFF8CA5BD),
+        const Color(0xFF0876F9),
+        progress,
+      ),
+    );
+    return Semantics(
+      label: '下滑进入对话模式',
+      child: MediaQuery.disableAnimationsOf(context)
+          ? icon
+          : icon
+                .animate(
+                  onPlay: (controller) =>
+                      controller.repeat(reverse: true, count: 2),
+                )
+                .fade(begin: 0.35, end: 1, duration: 680.ms)
+                .moveY(begin: -2, end: 3, curve: Curves.easeInOut)
+                .shimmer(
+                  delay: 120.ms,
+                  duration: 560.ms,
+                  color: const Color(0x99FFFFFF),
+                ),
     );
   }
 }
