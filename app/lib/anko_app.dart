@@ -113,14 +113,6 @@ class AnkoApp extends StatelessWidget {
           elevation: 0,
           margin: EdgeInsets.zero,
         ),
-        navigationBarTheme: const NavigationBarThemeData(
-          height: 72,
-          backgroundColor: Colors.white,
-          indicatorColor: Color(0xFFE4ECF8),
-          labelTextStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-        ),
       ),
       home: SessionGate(
         authRepository: authRepository,
@@ -259,34 +251,188 @@ class _HomeShellState extends State<HomeShell> {
     ];
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: screens),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: (index) =>
-              setState(() => _selectedIndex = index),
-          destinations: const [
-            NavigationDestination(
-              key: Key('contact-tab'),
-              icon: Icon(Icons.favorite_border_rounded),
-              selectedIcon: Icon(Icons.favorite_rounded),
-              label: '家人',
-            ),
-            NavigationDestination(
-              key: Key('guardian-tab'),
-              icon: Icon(Icons.pets_outlined),
-              selectedIcon: Icon(Icons.pets_rounded),
-              label: 'Anko',
-            ),
-            NavigationDestination(
-              key: Key('profile-tab'),
-              icon: Icon(Icons.account_circle_outlined),
-              selectedIcon: Icon(Icons.account_circle_rounded),
-              label: '我的',
+      bottomNavigationBar: _BubbleNavigationBar(
+        selectedIndex: _selectedIndex,
+        onSelected: (index) => setState(() => _selectedIndex = index),
+      ),
+    );
+  }
+}
+
+class _BubbleNavigationBar extends StatelessWidget {
+  const _BubbleNavigationBar({
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  static const _destinations = [
+    _BubbleDestination(
+      key: Key('contact-tab'),
+      icon: Icons.favorite_border_rounded,
+      selectedIcon: Icons.favorite_rounded,
+      label: '家人',
+    ),
+    _BubbleDestination(
+      key: Key('guardian-tab'),
+      icon: Icons.pets_outlined,
+      selectedIcon: Icons.pets_rounded,
+      label: 'Anko',
+    ),
+    _BubbleDestination(
+      key: Key('profile-tab'),
+      icon: Icons.account_circle_outlined,
+      selectedIcon: Icons.account_circle_rounded,
+      label: '我的',
+    ),
+  ];
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+      child: DecoratedBox(
+        key: const Key('bubble-navigation-bar'),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFFFFFF), Color(0xFFF4F8FD)],
+          ),
+          borderRadius: BorderRadius.circular(34),
+          border: Border.all(color: const Color(0xFFDDE8F4)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x24125B9F),
+              blurRadius: 24,
+              offset: Offset(0, 9),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            children: [
+              for (var index = 0; index < _destinations.length; index++)
+                Expanded(
+                  child: _BubbleNavigationItem(
+                    destination: _destinations[index],
+                    selected: selectedIndex == index,
+                    onTap: () => onSelected(index),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _BubbleNavigationItem extends StatelessWidget {
+  const _BubbleNavigationItem({
+    required this.destination,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _BubbleDestination destination;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 260);
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: destination.label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: destination.key,
+            borderRadius: BorderRadius.circular(27),
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: duration,
+              curve: Curves.easeOutCubic,
+              height: 54,
+              decoration: BoxDecoration(
+                gradient: selected
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF55A5FF), Color(0xFF0876F9)],
+                      )
+                    : null,
+                borderRadius: BorderRadius.circular(27),
+                boxShadow: selected
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x3D0876F9),
+                          blurRadius: 13,
+                          offset: Offset(0, 5),
+                        ),
+                        BoxShadow(
+                          color: Color(0x8AFFFFFF),
+                          blurRadius: 1,
+                          offset: Offset(0, 1),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedScale(
+                    duration: duration,
+                    curve: Curves.easeOutBack,
+                    scale: selected ? 1.08 : 1,
+                    child: Icon(
+                      selected ? destination.selectedIcon : destination.icon,
+                      color: selected ? Colors.white : const Color(0xFF718399),
+                      size: 23,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AnimatedDefaultTextStyle(
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    style: TextStyle(
+                      color: selected ? Colors.white : const Color(0xFF718399),
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                    child: Text(destination.label),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BubbleDestination {
+  const _BubbleDestination({
+    required this.key,
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+  });
+
+  final Key key;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
 }
