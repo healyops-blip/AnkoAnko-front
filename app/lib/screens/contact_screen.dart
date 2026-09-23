@@ -41,7 +41,7 @@ class _ContactScreenState extends State<ContactScreen> {
           return _ContactContent(
             overview: snapshot.requireData,
             onJoinFamily: _openJoinFamily,
-            onEmergencyContactChanged: _setEmergencyContact,
+            onEmergencyContactSelected: _setEmergencyContact,
           );
         },
       ),
@@ -70,24 +70,38 @@ class _ContactScreenState extends State<ContactScreen> {
 
   Future<void> _setEmergencyContact(FamilyContact contact) async {
     final overview = await _overview;
+    final previousContact = _selectedEmergencyContact(overview.contacts);
+    if (previousContact?.internalId == contact.internalId) return;
     try {
+      if (previousContact != null) {
+        await widget.repository.setEmergencyContact(
+          householdId: overview.internalHouseholdId,
+          contactId: previousContact.internalId,
+          selected: false,
+        );
+      }
       await widget.repository.setEmergencyContact(
         householdId: overview.internalHouseholdId,
         contactId: contact.internalId,
-        selected: !contact.isEmergencyContact,
+        selected: true,
       );
       if (!mounted) return;
       _reload();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(contact.isEmergencyContact ? '已取消紧急联系人' : '已设为紧急联系人'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已将${contact.nickname}设为紧急联系人')));
     } on FamilyRepositoryException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  FamilyContact? _selectedEmergencyContact(List<FamilyContact> contacts) {
+    for (final contact in contacts) {
+      if (contact.isEmergencyContact) return contact;
+    }
+    return null;
   }
 }
 
@@ -95,18 +109,18 @@ class _ContactContent extends StatelessWidget {
   const _ContactContent({
     required this.overview,
     required this.onJoinFamily,
-    required this.onEmergencyContactChanged,
+    required this.onEmergencyContactSelected,
   });
 
   final FamilyOverview overview;
   final VoidCallback onJoinFamily;
-  final ValueChanged<FamilyContact> onEmergencyContactChanged;
+  final ValueChanged<FamilyContact> onEmergencyContactSelected;
 
   @override
   Widget build(BuildContext context) {
-    final familyContacts = overview.contacts.where(
-      (contact) => !contact.isCurrentUser,
-    );
+    final familyContacts = overview.contacts
+        .where((contact) => !contact.isCurrentUser)
+        .toList(growable: false);
 
     return CustomScrollView(
       key: const Key('contact-screen'),
@@ -126,13 +140,15 @@ class _ContactContent extends StatelessWidget {
             children: [
               _FamilyCodeCard(overview: overview, onJoinFamily: onJoinFamily),
               const SizedBox(height: 14),
+              _EmergencyContactSelector(
+                contacts: familyContacts,
+                onSelected: onEmergencyContactSelected,
+              ),
+              const SizedBox(height: 14),
               ...familyContacts.map(
                 (contact) => Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: _ContactCard(
-                    contact: contact,
-                    onEmergencyContactChanged: onEmergencyContactChanged,
-                  ),
+                  child: _ContactCard(contact: contact),
                 ),
               ),
               const SizedBox(height: 24),
@@ -141,6 +157,65 @@ class _ContactContent extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _EmergencyContactSelector extends StatelessWidget {
+  const _EmergencyContactSelector({
+    required this.contacts,
+    required this.onSelected,
+  });
+
+  final List<FamilyContact> contacts;
+  final ValueChanged<FamilyContact> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedContact = _findSelectedContact();
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: DropdownButtonFormField<String>(
+          key: ValueKey(
+            'emergency-contact-dropdown-${selectedContact?.internalId}',
+          ),
+          initialValue: selectedContact?.internalId,
+          decoration: const InputDecoration(
+            labelText: '紧急联系人',
+            prefixIcon: Icon(Icons.emergency_outlined),
+            border: OutlineInputBorder(),
+          ),
+          hint: const Text('请选择紧急联系人'),
+          items: contacts
+              .map(
+                (contact) => DropdownMenuItem(
+                  value: contact.internalId,
+                  child: Text(contact.nickname),
+                ),
+              )
+              .toList(growable: false),
+          onChanged: contacts.isEmpty ? null : _selectContact,
+        ),
+      ),
+    );
+  }
+
+  FamilyContact? _findSelectedContact() {
+    for (final contact in contacts) {
+      if (contact.isEmergencyContact) return contact;
+    }
+    return null;
+  }
+
+  void _selectContact(String? contactId) {
+    if (contactId == null) return;
+    for (final contact in contacts) {
+      if (contact.internalId == contactId) {
+        onSelected(contact);
+        return;
+      }
+    }
   }
 }
 
@@ -189,13 +264,9 @@ class _FamilyCodeCard extends StatelessWidget {
 }
 
 class _ContactCard extends StatelessWidget {
-  const _ContactCard({
-    required this.contact,
-    required this.onEmergencyContactChanged,
-  });
+  const _ContactCard({required this.contact});
 
   final FamilyContact contact;
-  final ValueChanged<FamilyContact> onEmergencyContactChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -233,19 +304,10 @@ class _ContactCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (!contact.isCurrentUser)
-              IconButton.filledTonal(
-                key: ValueKey('emergency-contact-${contact.internalId}'),
-                tooltip: contact.isEmergencyContact ? '取消紧急联系人' : '设为紧急联系人',
-                onPressed: () => onEmergencyContactChanged(contact),
-                icon: Icon(
-                  contact.isEmergencyContact
-                      ? Icons.emergency_rounded
-                      : Icons.emergency_outlined,
-                  color: contact.isEmergencyContact
-                      ? const Color(0xFFD63C32)
-                      : null,
-                ),
+            if (contact.isEmergencyContact)
+              const Tooltip(
+                message: '紧急联系人',
+                child: Icon(Icons.emergency_rounded, color: Color(0xFFD63C32)),
               ),
           ],
         ),

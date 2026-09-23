@@ -70,18 +70,24 @@ void main() {
     expect(find.text('Anko 正在聆听'), findsOneWidget);
   });
 
-  testWidgets('an elder can set an emergency contact', (tester) async {
+  testWidgets('an elder selects an emergency contact from a dropdown', (
+    tester,
+  ) async {
     await tester.pumpWidget(AnkoApp());
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('contact-tab')));
     await tester.pumpAndSettle();
 
-    await tester.tap(
-      find.byKey(const ValueKey('emergency-contact-smoke-member-mom')),
-    );
+    final dropdown = find.byType(DropdownButtonFormField<String>);
+    expect(dropdown, findsOneWidget);
+    expect(find.text('请选择紧急联系人'), findsOneWidget);
+
+    await tester.tap(dropdown);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('妈妈').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('已设为紧急联系人'), findsOneWidget);
+    expect(find.text('已将妈妈设为紧急联系人'), findsOneWidget);
     expect(find.byIcon(Icons.emergency_rounded), findsOneWidget);
   });
 
