@@ -55,7 +55,7 @@ void main() {
     expect(find.text('关闭覆盖'), findsOneWidget);
   });
 
-  testWidgets('expands conversation mode by long pressing Anko', (
+  testWidgets('opens natural language chat by long pressing Anko', (
     tester,
   ) async {
     await tester.pumpWidget(AnkoApp());
@@ -65,19 +65,14 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.longPress(anko);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 800));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('anko-inline-conversation')), findsOneWidget);
-    expect(find.text('对话模式'), findsOneWidget);
-    expect(find.text('Anko 正在聆听'), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 1));
+    expect(find.byKey(const Key('anko-conversation-screen')), findsOneWidget);
+    expect(find.text('自然语言对话'), findsOneWidget);
+    expect(find.byKey(const Key('conversation-text-field')), findsOneWidget);
   });
 
-  testWidgets('pulls the message card down into conversation mode', (
+  testWidgets('pulls down into natural language chat and sends a message', (
     tester,
   ) async {
     await tester.pumpWidget(AnkoApp());
@@ -87,16 +82,20 @@ void main() {
       find.byKey(const Key('message-card-drag-region')),
       const Offset(0, 180),
     );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 800));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('anko-inline-conversation')), findsOneWidget);
-    expect(find.text('上滑收起对话'), findsOneWidget);
-    expect(find.text('Anko 正在聆听'), findsOneWidget);
+    expect(find.byKey(const Key('anko-conversation-screen')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('conversation-text-field')),
+      '家里现在安全吗？',
+    );
+    await tester.tap(find.byKey(const Key('send-conversation-message')));
+    await tester.pump();
+    expect(find.text('家里现在安全吗？'), findsOneWidget);
 
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('家庭消息和守护事件'), findsOneWidget);
   });
 
   testWidgets('an elder selects first and second emergency contacts', (
