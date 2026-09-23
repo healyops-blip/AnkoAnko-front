@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../data/guardian_map_repository.dart';
 import '../domain/guardian_map_models.dart';
+import '../widgets/anko_conversation_panel.dart';
 import '../widgets/anko_image.dart';
-import 'anko_conversation_screen.dart';
 
 class GuardianScreen extends StatefulWidget {
   const GuardianScreen({required this.repository, super.key});
@@ -14,15 +14,33 @@ class GuardianScreen extends StatefulWidget {
   State<GuardianScreen> createState() => _GuardianScreenState();
 }
 
-class _GuardianScreenState extends State<GuardianScreen> {
+class _GuardianScreenState extends State<GuardianScreen>
+    with SingleTickerProviderStateMixin {
   bool _showCoverage = false;
   bool _messageAcknowledged = false;
+  bool _conversationVisible = false;
   late Future<GuardianMapSnapshot> _mapFuture;
+  late final AnimationController _conversationController;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _mapFuture = widget.repository.fetchMap();
+    _conversationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+      reverseDuration: const Duration(milliseconds: 280),
+    )..addStatusListener(_handleConversationStatus);
+  }
+
+  @override
+  void dispose() {
+    _conversationController
+      ..removeStatusListener(_handleConversationStatus)
+      ..dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -30,6 +48,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
     return SafeArea(
       child: CustomScrollView(
         key: const Key('guardian-screen'),
+        controller: _scrollController,
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(22, 14, 14, 10),
@@ -84,50 +103,117 @@ class _GuardianScreenState extends State<GuardianScreen> {
 
   Widget _buildMessageCard() {
     return Card(
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 12, 14),
-        child: Row(
-          children: [
-            Expanded(
+      child: Column(
+        children: [
+          GestureDetector(
+            key: const Key('message-card-drag-region'),
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragUpdate: _handleConversationDragUpdate,
+            onVerticalDragEnd: _handleConversationDragEnd,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '妈妈 17:42',
-                    style: TextStyle(color: Color(0xFF8A9BAE)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '妈妈 17:42',
+                              style: TextStyle(color: Color(0xFF8A9BAE)),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _messageAcknowledged
+                                  ? '妈妈的心意，你已经收到啦。'
+                                  : '晚饭在冰箱第二层，回来热一下再吃。',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton.tonalIcon(
+                              onPressed: () =>
+                                  setState(() => _messageAcknowledged = true),
+                              icon: Icon(
+                                _messageAcknowledged
+                                    ? Icons.favorite
+                                    : Icons.check_rounded,
+                              ),
+                              label: Text(_messageAcknowledged ? '已回复' : '收到啦'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        key: const Key('message-anko'),
+                        onLongPress: _expandConversation,
+                        child: const AnkoImage(size: 108),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _messageAcknowledged
-                        ? '妈妈的心意，你已经收到啦。'
-                        : '晚饭在冰箱第二层，回来热一下再吃。',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: () =>
-                        setState(() => _messageAcknowledged = true),
-                    icon: Icon(
-                      _messageAcknowledged
-                          ? Icons.favorite
-                          : Icons.check_rounded,
-                    ),
-                    label: Text(_messageAcknowledged ? '已回复' : '收到啦'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedRotation(
+                        turns: _conversationVisible ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 260),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: Color(0xFF7391AD),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _conversationVisible ? '上滑收起对话' : '下滑和 Anko 对话',
+                        style: const TextStyle(
+                          color: Color(0xFF7391AD),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            GestureDetector(
-              key: const Key('message-anko'),
-              onLongPress: _openConversation,
-              child: const AnkoImage(size: 108),
+          ),
+          if (_conversationVisible)
+            ClipRect(
+              child: SizeTransition(
+                sizeFactor: CurvedAnimation(
+                  parent: _conversationController,
+                  curve: Curves.easeOutCubic,
+                  reverseCurve: Curves.easeInCubic,
+                ),
+                alignment: Alignment.topCenter,
+                child: FadeTransition(
+                  opacity: _conversationController,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, -0.06),
+                      end: Offset.zero,
+                    ).animate(_conversationController),
+                    child: SizedBox(
+                      height: 480,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                        child: AnkoConversationPanel(
+                          onCollapse: _collapseConversation,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -150,7 +236,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
             onCoverageChanged: () =>
                 setState(() => _showCoverage = !_showCoverage),
             onEventTap: _showInfo,
-            onAnkoLongPress: _openConversation,
+            onAnkoLongPress: _expandConversation,
           );
         }
         return const Card(
@@ -168,10 +254,58 @@ class _GuardianScreenState extends State<GuardianScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _openConversation() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AnkoConversationScreen()),
-    );
+  void _expandConversation() {
+    if (!_conversationVisible) {
+      setState(() => _conversationVisible = true);
+    }
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _conversationController.value = 1;
+    } else {
+      _conversationController.forward();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        0,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  void _collapseConversation() {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _conversationController.value = 0;
+      setState(() => _conversationVisible = false);
+    } else {
+      _conversationController.reverse();
+    }
+  }
+
+  void _handleConversationDragUpdate(DragUpdateDetails details) {
+    if (!_conversationVisible && details.delta.dy > 0) {
+      setState(() => _conversationVisible = true);
+    }
+    if (!_conversationVisible) return;
+    _conversationController.value =
+        (_conversationController.value + details.delta.dy / 300).clamp(0, 1);
+  }
+
+  void _handleConversationDragEnd(DragEndDetails details) {
+    if (!_conversationVisible) return;
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity > 450 || _conversationController.value > 0.35) {
+      _conversationController.forward();
+    } else {
+      _collapseConversation();
+    }
+  }
+
+  void _handleConversationStatus(AnimationStatus status) {
+    if (status != AnimationStatus.dismissed || !_conversationVisible) return;
+    setState(() => _conversationVisible = false);
   }
 }
 

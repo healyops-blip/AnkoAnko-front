@@ -55,7 +55,9 @@ void main() {
     expect(find.text('关闭覆盖'), findsOneWidget);
   });
 
-  testWidgets('opens conversation mode by long pressing Anko', (tester) async {
+  testWidgets('expands conversation mode by long pressing Anko', (
+    tester,
+  ) async {
     await tester.pumpWidget(AnkoApp());
     await tester.pumpAndSettle();
     final anko = find.byKey(const Key('map-anko'));
@@ -63,11 +65,38 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.longPress(anko);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
 
-    expect(find.byKey(const Key('anko-conversation-screen')), findsOneWidget);
+    expect(find.byKey(const Key('anko-inline-conversation')), findsOneWidget);
     expect(find.text('对话模式'), findsOneWidget);
     expect(find.text('Anko 正在聆听'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('pulls the message card down into conversation mode', (
+    tester,
+  ) async {
+    await tester.pumpWidget(AnkoApp());
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const Key('message-card-drag-region')),
+      const Offset(0, 180),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump();
+
+    expect(find.byKey(const Key('anko-inline-conversation')), findsOneWidget);
+    expect(find.text('上滑收起对话'), findsOneWidget);
+    expect(find.text('Anko 正在聆听'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('an elder selects first and second emergency contacts', (
