@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'data/auth_repository.dart';
 import 'data/configuration_auth_repository.dart';
 import 'data/family_repository.dart';
+import 'data/guardian_map_repository.dart';
 import 'data/smoke_auth_repository.dart';
 import 'data/smoke_data_store.dart';
 import 'data/smoke_family_repository.dart';
+import 'data/smoke_guardian_map_repository.dart';
 import 'domain/auth_models.dart';
 import 'screens/auth_screen.dart';
 import 'screens/contact_screen.dart';
@@ -15,20 +17,32 @@ import 'screens/profile_screen.dart';
 typedef FamilyRepositoryFactory = FamilyRepository Function(
   AuthSession session,
 );
+typedef GuardianMapRepositoryFactory = GuardianMapRepository Function(
+  AuthSession session,
+);
 
 class AnkoApp extends StatelessWidget {
   factory AnkoApp({
     Key? key,
     AuthRepository? authRepository,
     FamilyRepositoryFactory? familyRepositoryFactory,
+    GuardianMapRepositoryFactory? guardianMapRepositoryFactory,
     bool? smokeMode,
   }) {
     if (authRepository != null && familyRepositoryFactory != null) {
+      final resolvedSmokeMode = smokeMode ?? false;
       return AnkoApp._(
         key: key,
         authRepository: authRepository,
         familyRepositoryFactory: familyRepositoryFactory,
-        smokeMode: smokeMode ?? false,
+        guardianMapRepositoryFactory:
+            guardianMapRepositoryFactory ??
+            (_) => resolvedSmokeMode
+                ? const SmokeGuardianMapRepository()
+                : const ConfigurationGuardianMapRepository(
+                    '正式模式缺少二维地图 Repository。',
+                  ),
+        smokeMode: resolvedSmokeMode,
       );
     }
     final store = SmokeDataStore();
@@ -41,6 +55,7 @@ class AnkoApp extends StatelessWidget {
       ),
       familyRepositoryFactory: (activeSession) =>
           SmokeFamilyRepository(store: store, session: activeSession),
+      guardianMapRepositoryFactory: (_) => const SmokeGuardianMapRepository(),
       smokeMode: smokeMode ?? true,
     );
   }
@@ -48,12 +63,14 @@ class AnkoApp extends StatelessWidget {
   const AnkoApp._({
     required this.authRepository,
     required this.familyRepositoryFactory,
+    required this.guardianMapRepositoryFactory,
     required this.smokeMode,
     super.key,
   });
 
   final AuthRepository authRepository;
   final FamilyRepositoryFactory familyRepositoryFactory;
+  final GuardianMapRepositoryFactory guardianMapRepositoryFactory;
   final bool smokeMode;
 
   @override
@@ -108,6 +125,7 @@ class AnkoApp extends StatelessWidget {
       home: SessionGate(
         authRepository: authRepository,
         familyRepositoryFactory: familyRepositoryFactory,
+        guardianMapRepositoryFactory: guardianMapRepositoryFactory,
       ),
     );
   }
@@ -117,11 +135,13 @@ class SessionGate extends StatefulWidget {
   const SessionGate({
     required this.authRepository,
     required this.familyRepositoryFactory,
+    required this.guardianMapRepositoryFactory,
     super.key,
   });
 
   final AuthRepository authRepository;
   final FamilyRepositoryFactory familyRepositoryFactory;
+  final GuardianMapRepositoryFactory guardianMapRepositoryFactory;
 
   @override
   State<SessionGate> createState() => _SessionGateState();
@@ -142,6 +162,7 @@ class _SessionGateState extends State<SessionGate> {
     if (_session case final session?) {
       return HomeShell(
         familyRepository: widget.familyRepositoryFactory(session),
+        guardianMapRepository: widget.guardianMapRepositoryFactory(session),
       );
     }
     return FutureBuilder<AuthSession?>(
@@ -163,6 +184,7 @@ class _SessionGateState extends State<SessionGate> {
         if (snapshot.data case final session?) {
           return HomeShell(
             familyRepository: widget.familyRepositoryFactory(session),
+            guardianMapRepository: widget.guardianMapRepositoryFactory(session),
           );
         }
         return AuthScreen(
@@ -212,9 +234,14 @@ class _ConfigurationErrorScreen extends StatelessWidget {
 }
 
 class HomeShell extends StatefulWidget {
-  const HomeShell({required this.familyRepository, super.key});
+  const HomeShell({
+    required this.familyRepository,
+    required this.guardianMapRepository,
+    super.key,
+  });
 
   final FamilyRepository familyRepository;
+  final GuardianMapRepository guardianMapRepository;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -227,7 +254,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final screens = <Widget>[
       ContactScreen(repository: widget.familyRepository),
-      const GuardianScreen(),
+      GuardianScreen(repository: widget.guardianMapRepository),
       const ProfileScreen(),
     ];
     return Scaffold(
