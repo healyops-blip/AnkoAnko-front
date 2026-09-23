@@ -10,6 +10,7 @@ import 'data/smoke_family_repository.dart';
 import 'data/smoke_guardian_map_repository.dart';
 import 'domain/auth_models.dart';
 import 'screens/auth_screen.dart';
+import 'screens/anko_conversation_screen.dart';
 import 'screens/contact_screen.dart';
 import 'screens/guardian_screen.dart';
 import 'screens/profile_screen.dart';
@@ -254,6 +255,7 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: _BubbleNavigationBar(
         selectedIndex: _selectedIndex,
         onSelected: (index) => setState(() => _selectedIndex = index),
+        onAnkoLongPress: () => showAnkoConversation(context),
       ),
     );
   }
@@ -263,6 +265,7 @@ class _BubbleNavigationBar extends StatelessWidget {
   const _BubbleNavigationBar({
     required this.selectedIndex,
     required this.onSelected,
+    required this.onAnkoLongPress,
   });
 
   static const _destinations = [
@@ -288,6 +291,7 @@ class _BubbleNavigationBar extends StatelessWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final VoidCallback onAnkoLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -322,6 +326,7 @@ class _BubbleNavigationBar extends StatelessWidget {
                     destination: _destinations[index],
                     selected: selectedIndex == index,
                     onTap: () => onSelected(index),
+                    onLongPress: index == 1 ? onAnkoLongPress : null,
                   ),
                 ),
             ],
@@ -337,11 +342,13 @@ class _BubbleNavigationItem extends StatelessWidget {
     required this.destination,
     required this.selected,
     required this.onTap,
+    this.onLongPress,
   });
 
   final _BubbleDestination destination;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -361,6 +368,7 @@ class _BubbleNavigationItem extends StatelessWidget {
             key: destination.key,
             borderRadius: BorderRadius.circular(27),
             onTap: onTap,
+            onLongPress: onLongPress,
             child: AnimatedContainer(
               duration: duration,
               curve: Curves.easeOutCubic,

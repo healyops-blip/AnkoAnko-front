@@ -47,6 +47,28 @@ void main() {
     expect(find.text('设备与监测覆盖'), findsOneWidget);
   });
 
+  testWidgets('opens chat from the guardian title', (tester) async {
+    await tester.pumpWidget(AnkoApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('guardian-title-conversation')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('anko-conversation-screen')), findsOneWidget);
+  });
+
+  testWidgets('opens chat by long pressing the Anko navigation bubble', (
+    tester,
+  ) async {
+    await tester.pumpWidget(AnkoApp());
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.byKey(const Key('guardian-tab')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('anko-conversation-screen')), findsOneWidget);
+  });
+
   testWidgets('toggles the guardian coverage overlay', (tester) async {
     await tester.pumpWidget(AnkoApp());
     await tester.pumpAndSettle();
@@ -121,6 +143,13 @@ void main() {
     await tester.pumpWidget(AnkoApp());
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('contact-tab')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('configure-emergency-contacts')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('configure-emergency-contacts')));
     await tester.pumpAndSettle();
 
     final firstDropdown = find.byKey(

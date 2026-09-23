@@ -64,9 +64,37 @@ class _GuardianScreenState extends State<GuardianScreen> {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            'Anko守护界面',
-            style: Theme.of(context).textTheme.headlineMedium,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const Key('guardian-title-conversation'),
+                borderRadius: BorderRadius.circular(14),
+                onTap: _openConversation,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 2,
+                    vertical: 5,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Anko守护界面',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                      const SizedBox(width: 7),
+                      const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 19,
+                        color: Color(0xFF7C94AC),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
         HeaderButton(
@@ -218,25 +246,7 @@ class _GuardianScreenState extends State<GuardianScreen> {
   }
 
   void _openConversation() {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    Navigator.of(context).push(
-      PageRouteBuilder<void>(
-        pageBuilder: (_, _, _) => const AnkoConversationScreen(),
-        transitionDuration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 420),
-        reverseTransitionDuration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 300),
-        transitionsBuilder: (_, animation, _, child) => SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
-              .animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
-          child: child,
-        ),
-      ),
-    );
+    showAnkoConversation(context);
   }
 }
 

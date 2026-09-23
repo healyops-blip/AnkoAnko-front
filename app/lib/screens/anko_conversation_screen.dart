@@ -5,6 +5,28 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../widgets/anko_image.dart';
 
+Future<void> showAnkoConversation(BuildContext context) {
+  final reduceMotion = MediaQuery.disableAnimationsOf(context);
+  return Navigator.of(context).push(
+    PageRouteBuilder<void>(
+      pageBuilder: (_, _, _) => const AnkoConversationScreen(),
+      transitionDuration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 420),
+      reverseTransitionDuration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 300),
+      transitionsBuilder: (_, animation, _, child) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
+        child: child,
+      ),
+    ),
+  );
+}
+
 class AnkoConversationScreen extends StatefulWidget {
   const AnkoConversationScreen({super.key});
 

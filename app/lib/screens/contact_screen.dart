@@ -46,7 +46,8 @@ class _ContactScreenState extends State<ContactScreen> {
           return _ContactContent(
             overview: snapshot.requireData,
             onJoinFamily: _openJoinFamily,
-            onEmergencyContactSelected: _setEmergencyContact,
+            onConfigureEmergencyContacts: () =>
+                _openEmergencyContactSettings(snapshot.requireData),
           );
         },
       ),
@@ -116,18 +117,58 @@ class _ContactScreenState extends State<ContactScreen> {
           .showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
+
+  void _openEmergencyContactSettings(FamilyOverview overview) {
+    final familyContacts = overview.contacts
+        .where((contact) => !contact.isCurrentUser)
+        .toList(growable: false);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '设置紧急联系人',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              const Text('按优先顺序选择需要紧急联系的家人。'),
+              const SizedBox(height: 16),
+              _EmergencyContactSelector(
+                contacts: familyContacts,
+                onSelected: (priority, contact) {
+                  _setEmergencyContact(priority, contact);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ContactContent extends StatelessWidget {
   const _ContactContent({
     required this.overview,
     required this.onJoinFamily,
-    required this.onEmergencyContactSelected,
+    required this.onConfigureEmergencyContacts,
   });
 
   final FamilyOverview overview;
   final VoidCallback onJoinFamily;
-  final EmergencyContactSelected onEmergencyContactSelected;
+  final VoidCallback onConfigureEmergencyContacts;
 
   @override
   Widget build(BuildContext context) {
@@ -153,10 +194,7 @@ class _ContactContent extends StatelessWidget {
             children: [
               _FamilyCodeCard(overview: overview, onJoinFamily: onJoinFamily),
               const SizedBox(height: 14),
-              _EmergencyContactSelector(
-                contacts: familyContacts,
-                onSelected: onEmergencyContactSelected,
-              ),
+              _EmergencyContactButton(onPressed: onConfigureEmergencyContacts),
               const SizedBox(height: 14),
               ...familyContacts.map(
                 (contact) => Padding(
@@ -169,6 +207,29 @@ class _ContactContent extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _EmergencyContactButton extends StatelessWidget {
+  const _EmergencyContactButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.tonalIcon(
+        key: const Key('configure-emergency-contacts'),
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          shape: const StadiumBorder(),
+        ),
+        icon: const Icon(Icons.emergency_outlined),
+        label: const Text('设置紧急联系人'),
+      ),
     );
   }
 }
